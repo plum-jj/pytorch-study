@@ -231,6 +231,7 @@ class VGG(nn.Module):
 
         # OrderedDict를 사용하면 각 계층에 이름을 붙인 순차 모델을 만들 수 있다.
         # 키 이름은 중복되면 앞 계층이 덮어써지므로 모두 고유해야 한다.
+        # Dropout은 학습 중 일부 특성을 무작위로 0으로 만들어 과적합을 줄인다.
         self.fc = nn.Sequential(OrderedDict([
             ("dropout1", nn.Dropout()),
             ("fc1", nn.Linear(512, 512)),
@@ -332,6 +333,8 @@ test(model, test_loader, device)
 # ## ResNet
 
 # %%
+# 아래 ResNet 블록들은 합성곱 바로 뒤에서 BatchNorm이 편향 역할까지 하므로
+# 중복되는 편향 매개변수를 만들지 않도록 Conv2d에 bias=False를 사용한다.
 class BasicBlock(nn.Module):
     # BasicBlock의 마지막 출력 채널은 planes와 같으므로 확장 배수는 1이다.
     expansion = 1

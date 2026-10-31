@@ -115,6 +115,7 @@ class Dogs(Dataset):
         df = pd.read_csv(join(root, "labels.csv"))
 
         # unique()로 중복 없는 품종 목록을 만들며 각 위치가 클래스 번호가 된다.
+        # 이 순서가 품종명과 정답 번호의 대응표이므로 학습과 검증에서 같아야 한다.
         self.class_names = df["breed"].unique().tolist()
 
         if train:
@@ -140,6 +141,8 @@ class Dogs(Dataset):
         image = Image.open(self.images[i]).convert("RGB")
 
         if self.transforms is not None:
+            # 여기서 크기 조정과 텐서 변환 등을 적용해야 서로 다른 이미지를
+            # DataLoader가 같은 크기의 배치 하나로 묶을 수 있다.
             image = self.transforms(image)
 
         if self.train:
@@ -175,6 +178,7 @@ def get_dogs_datasets(
     train_indices = indices[val_samples:]
 
     # Subset은 원본 Dataset에서 지정된 인덱스만 보이도록 감싼다.
+    # 이미지를 복사하지 않고 원본과 인덱스만 보관하므로 메모리를 중복 사용하지 않는다.
     trainset = Subset(train_origin, train_indices)
     valset = Subset(val_origin, val_indices)
     testset = Dogs(
@@ -194,35 +198,20 @@ dataset_list = get_dogs_datasets(root="dataset")
 # %%
 from torchsummary import summary
 
-# torch.hub.load(): 지정한 GitHub 저장소의 모델 정의를 불러온다.
-# pytorch/vision:v0.10.0은 torchvision 0.10.0 버전의 코드를 사용한다는 뜻이다.
-# pretrained=True이면 ImageNet 1,000개 클래스로 미리 학습된 가중치도 내려받는다.
-# 처음 실행할 때는 인터넷 연결이 필요하며 이후에는 캐시된 파일을 재사용한다.
-model = torch.hub.load(
-    "pytorch/vision:v0.10.0",
-    "resnet50",
-    pretrained=True,
-)
+model = torch.hub.load('pytorch/vision:v0.10.0', 'resnet50', pretrained=True)
 print(model)
 
 # %%
-# 사전 학습된 ResNet50의 마지막 fc 계층은 ImageNet 1,000개 분류용이다.
-# 이를 개 품종 120개를 분류하는 새로운 완전연결 계층으로 교체한다.
 model.fc = nn.Sequential(
-    # ResNet50 특징 추출기의 출력 2,048개를 중간 특성 512개로 줄인다.
     nn.Linear(2048, 512),
     nn.ReLU(),
-    nn.Linear(512, 120),
+    nn.Linear(512, 120)
 )
 
-# fc만 교체했으므로 앞부분의 사전 학습된 특징 추출 계층은 그대로 유지된다.
-# CrossEntropyLoss가 클래스 점수를 직접 사용하므로 Softmax는 추가하지 않는다.
 print(model)
 
 # %%
-# 모델을 앞에서 선택한 GPU 또는 CPU로 이동한다.
-# 입력 크기 (3, 224, 224)는 배치 차원을 제외한 채널·높이·너비이다.
-summary(model.to(device), (3, 224, 224))
+summary(model.to('cuda'), (3, 224, 224))
 
 # %%
 def load_resnet():
