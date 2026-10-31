@@ -194,20 +194,35 @@ dataset_list = get_dogs_datasets(root="dataset")
 # %%
 from torchsummary import summary
 
-model = torch.hub.load('pytorch/vision:v0.10.0', 'resnet50', pretrained=True)
+# torch.hub.load(): 지정한 GitHub 저장소의 모델 정의를 불러온다.
+# pytorch/vision:v0.10.0은 torchvision 0.10.0 버전의 코드를 사용한다는 뜻이다.
+# pretrained=True이면 ImageNet 1,000개 클래스로 미리 학습된 가중치도 내려받는다.
+# 처음 실행할 때는 인터넷 연결이 필요하며 이후에는 캐시된 파일을 재사용한다.
+model = torch.hub.load(
+    "pytorch/vision:v0.10.0",
+    "resnet50",
+    pretrained=True,
+)
 print(model)
 
 # %%
+# 사전 학습된 ResNet50의 마지막 fc 계층은 ImageNet 1,000개 분류용이다.
+# 이를 개 품종 120개를 분류하는 새로운 완전연결 계층으로 교체한다.
 model.fc = nn.Sequential(
+    # ResNet50 특징 추출기의 출력 2,048개를 중간 특성 512개로 줄인다.
     nn.Linear(2048, 512),
     nn.ReLU(),
-    nn.Linear(512, 120)
+    nn.Linear(512, 120),
 )
 
+# fc만 교체했으므로 앞부분의 사전 학습된 특징 추출 계층은 그대로 유지된다.
+# CrossEntropyLoss가 클래스 점수를 직접 사용하므로 Softmax는 추가하지 않는다.
 print(model)
 
 # %%
-summary(model.to('cuda'), (3, 224, 224))
+# 모델을 앞에서 선택한 GPU 또는 CPU로 이동한다.
+# 입력 크기 (3, 224, 224)는 배치 차원을 제외한 채널·높이·너비이다.
+summary(model.to(device), (3, 224, 224))
 
 # %%
 def load_resnet():
