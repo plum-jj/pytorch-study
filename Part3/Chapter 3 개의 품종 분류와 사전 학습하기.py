@@ -198,39 +198,53 @@ dataset_list = get_dogs_datasets(root="dataset")
 # %%
 from torchsummary import summary
 
-model = torch.hub.load('pytorch/vision:v0.10.0', 'resnet50', pretrained=True)
+# torch.hub.load(): 지정한 GitHub 저장소에서 모델 코드와 가중치를 불러온다.
+# 처음 실행할 때는 인터넷이 필요하고 이후에는 캐시된 파일을 재사용한다.
+model = torch.hub.load(
+    "pytorch/vision:v0.10.0",
+    "resnet50",
+    pretrained=True,
+)
 print(model)
 
 # %%
+# ImageNet 1,000개 분류용 fc를 개 품종 120개 분류용 계층으로 교체한다.
 model.fc = nn.Sequential(
     nn.Linear(2048, 512),
     nn.ReLU(),
-    nn.Linear(512, 120)
+    nn.Linear(512, 120),
 )
 
 print(model)
 
 # %%
-summary(model.to('cuda'), (3, 224, 224))
+# 입력 크기는 배치 차원을 제외한 (채널, 높이, 너비)이다.
+summary(model.to(device), (3, 224, 224))
 
 # %%
 def load_resnet():
-  model = torch.hub.load('pytorch/vision:v0.10.0', 'resnet50', pretrained=True)
+    model = torch.hub.load(
+        "pytorch/vision:v0.10.0",
+        "resnet50",
+        pretrained=True,
+    )
 
-  for param in model.parameters():
-    param.requires_grad = False
+    # 사전 학습된 특징 추출 계층은 기울기를 계산하지 않도록 동결한다.
+    for param in model.parameters():
+        param.requires_grad = False
 
-  model.fc = nn.Sequential(
-    nn.Linear(2048, 512),
-    nn.ReLU(),
-    nn.Linear(512, 120)
-  )
+    # 동결 이후 새로 만든 fc의 매개변수는 기본값인 requires_grad=True이다.
+    model.fc = nn.Sequential(
+        nn.Linear(2048, 512),
+        nn.ReLU(),
+        nn.Linear(512, 120),
+    )
 
-  return model
+    return model
 
 # %%
 model = load_resnet()
-summary(model.to('cuda'), (3, 224, 224))
+summary(model.to(device), (3, 224, 224))
 
 # %% [markdown]
 # ### 3.4 학습, 검증, 테스트
@@ -258,7 +272,7 @@ def train(model, dataloader, criterion, optimizer, epoch, device):
     # Accuracy 계산
     with torch.no_grad():
       _, predicted = torch.max(outputs, 1)
-      correct += predicted.eq(targets.view_as(predicted)).sum()
+      correct += predicted.eq(targets.view_as(predicted)).sum().item()
 
   # Accuracy 출력
   data_num = len(dataloader.dataset)
@@ -291,7 +305,7 @@ def validation(model, dataloader, criterion, epoch, device):
 
       # Accuracy 계산
       _, predicted = torch.max(outputs, 1)
-      correct += predicted.eq(targets.view_as(predicted)).sum()
+      correct += predicted.eq(targets.view_as(predicted)).sum().item()
 
   # Accuracy 계산
   data_num = len(dataloader.dataset)
@@ -308,9 +322,11 @@ BATCH_SIZE = 64
 NUM_WORKERS = 1
 LR = 1e-4
 MODEL_ROOT = 'checkpoint'
+# exist_ok=True이면 폴더가 이미 있어도 오류 없이 그대로 사용한다.
 os.makedirs(MODEL_ROOT, exist_ok=True)
 
-# transform
+# RandomResizedCrop은 이미지의 일부를 무작위 비율로 잘라 256×256으로 조정한다.
+# ColorJitter는 밝기·대비·채도를 바꾸어 다양한 촬영 환경을 흉내 낸다.
 train_transform = transforms.Compose([
   transforms.RandomResizedCrop((256, 256)),
   transforms.RandomHorizontalFlip(),
@@ -323,6 +339,7 @@ train_transform = transforms.Compose([
                        std=[0.229, 0.224, 0.225])
 ])
 test_transform = transforms.Compose([
+  # 검증과 테스트에는 무작위 증강을 적용하지 않아 결과를 일정하게 유지한다.
   transforms.Resize((256, 256)),
   transforms.CenterCrop((224, 224)),
   transforms.ToTensor(),
@@ -362,6 +379,7 @@ model = model.to(device)
 # Loss, Optimizer 정의
 criterion = nn.CrossEntropyLoss()
 optimizer = optim.RMSprop(model.parameters(), lr=LR)
+# StepLR은 10 epoch마다 학습률에 0.1을 곱해 점차 세밀하게 학습한다.
 scheduler = optim.lr_scheduler.StepLR(optimizer, step_size=10, gamma=0.1)
 
 train_losses = []
@@ -378,9 +396,11 @@ for epoch in range(1, EPOCH+1):
 
   scheduler.step()
 
+  # 검증 정확도가 지금까지의 최고값 이상일 때만 가중치를 저장한다.
   if vacc >= max_acc:
     max_acc = vacc
     last_checkpoint = f"{MODEL_ROOT}/resnet50-ep{epoch}-{vacc:.2f}.pt"
+    # state_dict에는 모델 구조가 아니라 학습된 매개변수만 저장된다.
     torch.save(model.state_dict(), last_checkpoint)
 
 
@@ -389,6 +409,7 @@ for epoch in range(1, EPOCH+1):
 
 # %%
 def inference(model, image, device, root='dataset'):
+  # 학습 때와 같은 순서로 품종 목록을 만들어 예측 번호를 품종명으로 변환한다.
   df = pd.read_csv(join(root, 'labels.csv'))
   class_names = df['breed'].unique().tolist()
 
@@ -401,13 +422,16 @@ def inference(model, image, device, root='dataset'):
   ])
 
   image = transform(image)
+  # unsqueeze(0): 한 장의 (C, H, W) 이미지 앞에 배치 차원을 추가한다.
   image = image.unsqueeze(0).to(device)
 
   model.eval()
   model = model.to(device)
 
-  outputs = model(image)
-  _, predicted = torch.max(outputs, 1)
+  # 추론에서는 기울기가 필요 없으므로 계산 기록을 만들지 않는다.
+  with torch.no_grad():
+    outputs = model(image)
+    _, predicted = torch.max(outputs, 1)
   print(predicted)
   print(class_names[predicted.item()])
 
@@ -415,18 +439,21 @@ def inference(model, image, device, root='dataset'):
 is_cuda = torch.cuda.is_available()
 device = torch.device("cuda" if is_cuda else "cpu")
 
+# 이 경로는 원본 Colab 환경 기준이므로 로컬에서는 실제 체크포인트 경로로 바꾼다.
 last_checkpoint = "/content/drive/MyDrive/Colab Notebooks/프로젝트로 시작하는 Pytorch/5.3/checkpoint/resnet50-ep50-70.35.pt"
 model = load_resnet()
-model.load_state_dict(torch.load(last_checkpoint))
+# map_location은 GPU에서 저장한 가중치도 현재 선택된 장치에서 불러오게 한다.
+model.load_state_dict(torch.load(last_checkpoint, map_location=device))
 
 # %%
-img = Image.open("mong.jpg")
+# 추론 모델의 3채널 입력과 맞추기 위해 RGB로 변환한다.
+img = Image.open("mong.jpg").convert("RGB")
 img
 
 # %%
 inference(model, img, device)
 # %%
-img = Image.open("coco.jpg")
+img = Image.open("coco.jpg").convert("RGB")
 img
 
 # %%
