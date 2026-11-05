@@ -315,7 +315,7 @@ def load_resnet():
 
 # %%
 def train(model, dataloader, criterion, optimizer, epoch, device):
-  # train mode
+  # model.train(): Dropout과 BatchNorm을 학습 모드로 전환한다.
   model.train()
 
   # 학습 통계
@@ -328,7 +328,9 @@ def train(model, dataloader, criterion, optimizer, epoch, device):
 
       optimizer.zero_grad()
       outputs = model(data)
-      loss = criterion(outputs, targets.unsqueeze(1).float()) #### Change
+      # 모델 출력은 (배치 크기, 1)이므로 정답도 같은 모양으로 바꾸고
+      # BCEWithLogitsLoss에 맞게 0.0/1.0 형태의 실수 텐서로 변환한다.
+      loss = criterion(outputs, targets.unsqueeze(1).float())
       loss.backward()
       optimizer.step()
 
@@ -337,7 +339,8 @@ def train(model, dataloader, criterion, optimizer, epoch, device):
 
       # Accuracy 계산
       with torch.no_grad():
-        predicted = torch.sigmoid(outputs).round() #### Change
+        # logit을 Sigmoid로 0~1 확률로 바꾼 뒤 0.5를 기준으로 정상/폐렴을 결정한다.
+        predicted = torch.sigmoid(outputs).round()
         correct += predicted.eq(targets.view_as(predicted)).sum()
 
     # Accuracy 출력
@@ -353,7 +356,7 @@ def train(model, dataloader, criterion, optimizer, epoch, device):
 
 # %%
 def validation(model, dataloader, criterion, epoch, device):
-  # eval 모드
+  # model.eval(): Dropout과 BatchNorm을 검증 모드로 전환한다.
   model.eval()
 
   # 검증 통계
@@ -361,18 +364,19 @@ def validation(model, dataloader, criterion, epoch, device):
   running_loss = 0.
 
   with tqdm(dataloader) as pbar:
+    # 검증에서는 역전파하지 않으므로 계산 기록을 만들지 않아 메모리를 절약한다.
     with torch.no_grad():
       for i, (data, targets) in enumerate(pbar):
         data, targets = data.to(device), targets.to(device)
 
         outputs = model(data)
-        loss = criterion(outputs, targets.unsqueeze(1).float())  #### Change
+        loss = criterion(outputs, targets.unsqueeze(1).float())
 
         running_loss += loss.item()
         pbar.set_postfix(loss=loss.item())
 
         # Accuracy 계산
-        predicted = torch.sigmoid(outputs).round() #### Change
+        predicted = torch.sigmoid(outputs).round()
         correct += predicted.eq(targets.view_as(predicted)).sum()
 
   # Accuracy 계산
@@ -384,7 +388,7 @@ def validation(model, dataloader, criterion, epoch, device):
 
 # %%
 def test(model, dataloader, device):
-    # eval 모드
+    # 테스트에서는 학습된 가중치를 변경하지 않고 최종 성능만 측정한다.
     model.eval()
 
     # 테스트 통계
@@ -396,14 +400,15 @@ def test(model, dataloader, device):
       for data, targets in dataloader:
         data, targets = data.to(device), targets.to(device)
 
-        outputs = model(data)    # forward
+        outputs = model(data)
 
         # Accuracy 계산
-        predicted = torch.sigmoid(outputs).round()  ### Change
+        predicted = torch.sigmoid(outputs).round()
         correct += predicted.eq(targets.view_as(predicted)).sum()
 
-        y_true.append(targets)
-        y_pred.append(outputs)
+        # 혼동 행렬을 만들 수 있도록 배치별 정답과 Sigmoid 적용 전 logit을 모은다.
+        y_true.append(targets.cpu())
+        y_pred.append(outputs.cpu())
 
     # Accuracy 계산
     data_num = len(dataloader.dataset)
@@ -414,6 +419,7 @@ def test(model, dataloader, device):
 # %%
 import wandb
 
+# wandb.init(): 이번 학습 실행(run)을 생성하고 지표와 결과물을 기록할 준비를 한다.
 wandb.init(project="Pneumonia", save_code=True)
 
 EPOCH = 10
@@ -447,7 +453,8 @@ trainset, valset, testset = get_dataset_v2(
   test_transforms=test_transform
 )
 
-# dataloader
+# DataLoader는 데이터셋을 배치 단위로 묶어 모델에 전달한다.
+# 학습 데이터만 매 epoch 순서를 섞고, 검증·테스트 데이터 순서는 유지한다.
 train_loader = DataLoader(
   dataset=trainset,
   shuffle=True,
@@ -470,7 +477,9 @@ model = load_resnet()
 
 # Optimizer, Loss, Scheduler
 optimizer = optim.Adam(model.parameters(), lr=LR)
+# BCEWithLogitsLoss는 Sigmoid와 이진 교차 엔트로피를 한 번에 계산한다.
 criterion = nn.BCEWithLogitsLoss()
+# 3 epoch마다 학습률에 0.5를 곱해 점차 작은 폭으로 가중치를 조정한다.
 scheduler = optim.lr_scheduler.StepLR(optimizer, step_size=3, gamma=0.5)
 
 model = model.to(device)
@@ -484,6 +493,7 @@ for epoch in range(EPOCH):
   tloss, tacc = train(model, train_loader, criterion, optimizer, epoch, device)
   vloss, vacc = validation(model, val_loader, criterion, epoch, device)
 
+  # wandb.log(): 현재 epoch의 학습률·손실·정확도를 W&B 실행 기록에 저장한다.
   wandb.log({
       "lr": scheduler.get_last_lr()[0],
       "train_loss": tloss,
@@ -494,10 +504,14 @@ for epoch in range(EPOCH):
   scheduler.step()
 
   if vacc > max_acc:
+    # 검증 정확도가 가장 높을 때만 가중치를 덮어써서 최적 모델을 보존한다.
+    max_acc = vacc
     torch.save(model.state_dict(), "best.pth")
 
 # load best model
-model.load_state_dict(torch.load("best.pth"))
+# map_location을 지정하면 저장 당시 GPU 사용 여부와 관계없이 현재 장치에서 불러온다.
+model.load_state_dict(torch.load("best.pth", map_location=device))
+# Artifact는 체크포인트 파일을 W&B에 별도 버전으로 보관한다.
 artifact = wandb.Artifact('best', type='checkpoint')
 artifact.add_file('best.pth')
 wandb.log_artifact(artifact)
@@ -507,6 +521,7 @@ tacc, y_true, y_preds = test(model, test_loader, device)
 class_names = testset.classes
 wandb.log({
   "test_accuracy": tacc,
+  # 각 샘플의 logit을 확률과 0/1 예측으로 바꿔 최종 혼동 행렬을 기록한다.
   "conf_mat": wandb.plot.confusion_matrix(probs=None,
                 y_true=y_true.tolist(),
                 preds=torch.sigmoid(y_preds).squeeze().round().int().tolist(),

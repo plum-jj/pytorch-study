@@ -67,24 +67,27 @@ if device.type == "cuda":
 # ### 1.2 데이터 분석
 
 # %%
-# Jupyter-only command: %cd /content/drive/MyDrive/Colab\ Notebooks/프로젝트로\ 시작하는\ Pytorch/6.1
+# 업로드한 노트북도 바로 실행할 수 있도록 Colab의 기본 임시 작업 폴더를 사용한다.
+# Jupyter-only command: %cd /content
 # Jupyter-only command: %ls
 
 # %%
-# 압축을 풀기 전에 같은 이름의 dataset 폴더가 있으면 파일이 섞일 수 있다.
-# Jupyter-only command: !unzip -qq "Face Mask Detection.zip" -d dataset
+# Kaggle의 공개 Face Mask Detection 데이터셋을 내려받아 dataset 폴더에 압축 해제한다.
+# Jupyter-only command: !wget -q -O face-mask-detection.zip https://www.kaggle.com/api/v1/datasets/download/andrewmvd/face-mask-detection
+# Jupyter-only command: !unzip -qo face-mask-detection.zip -d dataset
 
 # %%
-# Jupyter-only command: ls dataset
+print(os.listdir("dataset"))
 
 # %%
-# Jupyter-only command: ls dataset/images | head
+print(os.listdir("dataset/images")[:10])
 
 # %%
-# Jupyter-only command: ls dataset/annotations | head
+print(os.listdir("dataset/annotations")[:10])
 
 # %%
-# Jupyter-only command: cat dataset/annotations/maksssksksss457.xml
+with open("dataset/annotations/maksssksksss457.xml", encoding="utf-8") as annot_file:
+  print(annot_file.read())
 
 # %%
 def read_annot(file_name, xml_dir):
@@ -187,8 +190,8 @@ class MaskDataset(Dataset):
 
       # Faster R-CNN의 boxes는 [xmin, ymin, xmax, ymax] 모양의 실수 텐서이고,
       # labels는 각 객체의 클래스 번호를 담은 정수 텐서이다.
-      bboxes = torch.tensor(augs['bboxes'])
-      labels = torch.tensor(augs['labels'])
+      bboxes = torch.tensor(augs['bboxes'], dtype=torch.float32).reshape(-1, 4)
+      labels = torch.tensor(augs['labels'], dtype=torch.int64)
 
     # 객체 탐지 모델은 정답을 boxes와 labels 키를 가진 딕셔너리로 받는다.
     target = {}
@@ -270,28 +273,30 @@ def get_dataset(
     train_transforms=None, test_transforms=None,
     random_seed=827
 ):
-  # 먼저 전체 이미지 목록을 가진 하나의 원본 Dataset을 만든다.
-  origin = MaskDataset(
+  # 학습 세트와 평가 세트가 서로 다른 transform을 사용하도록 Dataset을 따로 만든다.
+  train_origin = MaskDataset(
     root,
     transform=train_transforms
   )
-
-  train_samples = int(len(origin) * train)
-  val_samples = int(len(origin) * val)
-  test_samples = len(origin) - train_samples - val_samples
-
-  # random_split() 직전에 시드를 고정해 같은 인덱스 분할을 재현한다.
-  torch.manual_seed(random_seed)
-  trainset, valset, testset = torch.utils.data.random_split(
-    origin,
-    (train_samples, val_samples, test_samples),
+  eval_origin = MaskDataset(
+    root,
+    transform=test_transforms
   )
 
-  # 주의: random_split()의 결과는 Subset이며 실제 데이터는 세 Subset이
-  # 같은 origin Dataset을 공유한다. Subset에 transforms 속성을 추가해도
-  # MaskDataset의 self.transform에는 반영되지 않는다.
-  valset.transforms = test_transforms
-  testset.transforms = test_transforms
+  train_samples = int(len(train_origin) * train)
+  val_samples = int(len(train_origin) * val)
+  test_samples = len(train_origin) - train_samples - val_samples
+
+  # 고정된 난수 생성기로 인덱스를 섞어 매번 같은 데이터 분할을 재현한다.
+  generator = torch.Generator().manual_seed(random_seed)
+  indices = torch.randperm(len(train_origin), generator=generator).tolist()
+  train_indices = indices[:train_samples]
+  val_indices = indices[train_samples:train_samples + val_samples]
+  test_indices = indices[train_samples + val_samples:]
+
+  trainset = torch.utils.data.Subset(train_origin, train_indices)
+  valset = torch.utils.data.Subset(eval_origin, val_indices)
+  testset = torch.utils.data.Subset(eval_origin, test_indices)
 
   return trainset, valset, testset
 
@@ -378,34 +383,49 @@ def validation(model, dataloader, epoch, device,
         # eval() 모드의 Faster R-CNN은 boxes, labels, scores가 담긴 예측 딕셔너리를 반환한다.
         predictions = model(data)
 
-      # 이 반복문은 들여쓰기상 DataLoader 반복문 밖에 있으므로 마지막 배치만 평가한다.
-      # 전체 검증 데이터를 평가하려면 아래 계산을 위의 for 블록 안에서 수행해야 한다.
-      for i in range(len(target)):
-        true_boxes = target[i]['boxes'].cpu()
-        true_labels = target[i]['labels'].cpu().numpy()
-        pred_boxes = predictions[i]['boxes'].cpu()
-        pred_scores = predictions[i]['scores'].cpu().numpy()
+        # 마지막 배치만이 아니라 DataLoader의 모든 이미지에 대해 평가한다.
+        for j in range(len(target)):
+          true_boxes = target[j]['boxes'].cpu()
+          true_labels = target[j]['labels'].cpu()
+          pred_boxes = predictions[j]['boxes'].cpu()
+          pred_labels = predictions[j]['labels'].cpu()
+          pred_scores = predictions[j]['scores'].cpu()
 
-        # 모델이 일정 점수 이상으로 확신한 예측 상자만 남긴다.
-        pred_boxes_thr = pred_boxes[pred_scores >= threshold_score]
+          # 모델이 일정 점수 이상으로 확신한 예측만 남긴다.
+          keep = pred_scores >= threshold_score
+          pred_boxes = pred_boxes[keep]
+          pred_labels = pred_labels[keep]
 
-        # box_iou()는 예측 상자와 정답 상자의 모든 조합에 대해 IoU 행렬을 계산한다.
-        # IoU는 두 상자가 겹친 넓이를 두 상자의 합집합 넓이로 나눈 값이다.
-        iou_for_img = torchvision.ops.box_iou(pred_boxes_thr, true_boxes)
+          matched_true = set()
+          true_positives = 0
 
-        true_positives = (iou_for_img > threshold_iou).sum()
-        false_positives = len(pred_boxes) - true_positives
-        false_negatives = len(true_boxes) - true_positives
+          if len(pred_boxes) and len(true_boxes):
+            # 각 예측을 같은 클래스의 아직 매칭되지 않은 정답 하나와만 연결한다.
+            iou_matrix = torchvision.ops.box_iou(pred_boxes, true_boxes)
+            for pred_idx in range(len(pred_boxes)):
+              valid = true_labels == pred_labels[pred_idx]
+              candidate_ious = iou_matrix[pred_idx].clone()
+              candidate_ious[~valid] = 0
+              for true_idx in matched_true:
+                candidate_ious[true_idx] = 0
 
-        tps.append(true_positives)
-        fps.append(false_positives)
-        fns.append(false_negatives)
+              best_iou, best_true_idx = candidate_ious.max(dim=0)
+              if best_iou >= threshold_iou:
+                true_positives += 1
+                matched_true.add(best_true_idx.item())
 
-  precision = sum(tps) / (sum(tps) + sum(fps))
-  recall = sum(tps) / (sum(tps) + sum(fns))
+          false_positives = len(pred_boxes) - true_positives
+          false_negatives = len(true_boxes) - true_positives
+
+          tps.append(true_positives)
+          fps.append(false_positives)
+          fns.append(false_negatives)
+
+  precision = sum(tps) / max(sum(tps) + sum(fps), 1)
+  recall = sum(tps) / max(sum(tps) + sum(fns), 1)
 
   # F1 점수는 정밀도와 재현율의 조화 평균이다.
-  f1 = 2 * (precision * recall) / (precision + recall)
+  f1 = 2 * (precision * recall) / max(precision + recall, 1e-8)
 
   print(f'[{epoch}/{EPOCH}] precision: {precision:.2f} recall: {recall:.2f} f1: {f1:.2f} \n')
 
@@ -413,7 +433,7 @@ def validation(model, dataloader, epoch, device,
 
 # %%
 EPOCH = 10
-BATCH_SIZE = 16
+BATCH_SIZE = 4
 NUM_WORKERS = 2
 LR = 0.005
 MOMENTUM = 0.9
@@ -474,7 +494,8 @@ for epoch in range(EPOCH):
 
   # 검증 F1 점수가 지금까지 가장 높을 때만 모델의 가중치 딕셔너리를 저장한다.
   if f1 > max_f1:
-    torch.save(model.state_dict(), "best.pth")
+    # Chapter 2 오토인코더의 best.pth와 충돌하지 않도록 마스크 모델 전용 이름을 사용한다.
+    torch.save(model.state_dict(), "mask_best.pth")
     max_f1 = f1
 
 p, r, f1 = validation(model, test_loader, epoch, device)
@@ -487,7 +508,7 @@ model = load_model()
 
 # 저장된 state_dict를 같은 구조의 새 모델에 적용한다.
 # GPU에서 저장한 파일도 CPU 환경에서 읽으려면 torch.load()에 map_location을 지정할 수 있다.
-model.load_state_dict(torch.load("best.pth"))
+model.load_state_dict(torch.load("mask_best.pth", map_location=device))
 model = model.to(device)
 
 # %%
