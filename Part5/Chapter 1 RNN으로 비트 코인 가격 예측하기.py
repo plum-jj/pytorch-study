@@ -178,16 +178,16 @@ for i, (x, y) in enumerate(trainset):
 #
 
 # %%
-# nn.LSTM(input_size, hidden_size): 한 시점에 입력 특성 4개를 받고
-# 은닉 상태도 4개 값으로 유지하는 LSTM 층을 만든다.
-model = nn.LSTM(4, 4)
+# 각 시점의 종가 1개를 입력받아 다음 시점의 종가 1개를 예측한다.
+# batch_first=True이므로 입력 모양은 (배치, 시점 4개, 특성 1개)이다.
+model = nn.LSTM(1, 1, batch_first=True)
 # summary()는 입력 모양을 기준으로 계층별 출력 크기와 파라미터 수를 보여준다.
-summary(model, (1, 4))
+summary(model, input_size=(1, 4, 1))
 
 # %%
 # LSTM은 모든 시점의 출력과 마지막 은닉 상태·셀 상태를 함께 반환한다.
-# 여기서는 배치 차원 없이 (시점 1개, 입력 특성 4개) 형태로 동작을 확인한다.
-output, (hidden_state, cell_state) = model(torch.randn((1,4)).to(device))
+# 여기서는 (배치 1개, 시점 4개, 입력 특성 1개) 형태로 동작을 확인한다.
+output, (hidden_state, cell_state) = model(torch.randn((1, 4, 1)).to(device))
 print(output)
 print(hidden_state)
 print(cell_state)
@@ -269,7 +269,7 @@ test_loader = DataLoader(
 )
 
 # Model
-model = nn.LSTM(4, 4)
+model = nn.LSTM(1, 1, batch_first=True)
 
 # Optimizer, Loss, Scheduler
 # Adam은 model.parameters()에 들어 있는 학습 가능한 가중치를 갱신한다.
@@ -292,10 +292,10 @@ for epoch in range(EPOCH):
   print(f'[{epoch}/{EPOCH}] valid loss: {vloss:.4f}\n')
   scheduler.step()
 
-  # 검증 손실이 가장 낮을 때의 가중치만 best.pth에 저장한다.
+  # 검증 손실이 가장 낮을 때의 비트코인 예측 가중치만 저장한다.
   if vloss < min_loss:
     print(f"Update Best Model: {vloss}")
-    torch.save(model.state_dict(), "best.pth")
+    torch.save(model.state_dict(), "bitcoin_best.pth")
     min_loss = vloss
 
 # %% [markdown]
@@ -336,9 +336,9 @@ def show_plot(model, dataloader, device):
   df.plot(figsize=(14,5))
 
 # %%
-model = nn.LSTM(4, 4).to(device)
+model = nn.LSTM(1, 1, batch_first=True).to(device)
 # CPU에서도 GPU 저장 모델을 읽을 수 있도록 현재 장치로 위치를 변환해 불러온다.
-model.load_state_dict(torch.load("best.pth", map_location=device))
+model.load_state_dict(torch.load("bitcoin_best.pth", map_location=device))
 
 # %%
 show_plot(model, train_loader, device)
