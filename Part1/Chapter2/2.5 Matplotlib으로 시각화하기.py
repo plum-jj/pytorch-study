@@ -1,12 +1,9 @@
-# %%
 # Converted from: 2.5 Matplotlib으로 시각화하기.ipynb
 # Original .ipynb is preserved alongside this file.
 
-# %%
 # Jupyter-only command: !pip install matplotlib
 # Jupyter-only command: !pip install numpy
 
-# %%
 import numpy as np
 import matplotlib.pyplot as plt
 
@@ -16,7 +13,6 @@ y2 = 10 * x1 + 2
 
 x2 = 10 + 10 * np.random.randn(1000)
 
-# %%
 # 셀 3: 두 개의 선 그래프 그리기
 
 # plot(): x축 값과 y축 값을 이용해 선 그래프를 그린다.
@@ -42,7 +38,6 @@ plt.legend(loc="upper left")
 # show(): 완성된 그래프를 화면에 출력한다.
 plt.show()
 
-# %%
 # 셀 4: 그래프 영역을 둘로 나누기
 
 # subplot(행 개수, 열 개수, 위치 번호):
@@ -66,7 +61,6 @@ plt.plot(x1, y2, "-", label="y2")
 
 plt.show()
 
-# %%
 # 셀 5: 히스토그램 그리기
 
 # hist(): 숫자 데이터가 각 구간에 얼마나 분포하는지 히스토그램으로 나타낸다.
@@ -85,7 +79,6 @@ plt.hist(
 
 plt.show()
 
-# %%
 # 셀 6: 예제 이미지 출력
 
 # skimage의 data 모듈에는 실습에 사용할 수 있는 예제 이미지가 포함되어 있다.

@@ -1,14 +1,10 @@
-# %%
 # Converted from: Chapter 1 객체 인식으로 마스크 인식하기.ipynb
 # Original .ipynb is preserved alongside this file.
 
-# %% [markdown]
 # ## Chapter 1 객체 인식으로 마스크 인식하기
 
-# %%
 # Jupyter-only command: !pip install -q torchinfo
 
-# %%
 import random
 import numpy as np
 import pandas as pd
@@ -45,13 +41,11 @@ from torchvision.models.detection.faster_rcnn import FastRCNNPredictor
 # summary는 입력 크기를 기준으로 모델의 계층과 출력 모양을 요약한다.
 from torchinfo import summary
 
-# %%
 # CUDA GPU 사용 가능 여부를 확인한 뒤 모델과 텐서를 계산할 장치를 정한다.
 is_cuda = torch.cuda.is_available()
 device = torch.device("cuda" if is_cuda else "cpu")
 print(is_cuda, device)
 
-# %%
 seed = 322
 
 # 파이썬, NumPy, PyTorch가 같은 난수 흐름을 사용하도록 시드를 고정한다.
@@ -63,33 +57,25 @@ torch.manual_seed(seed)
 if device.type == "cuda":
   torch.cuda.manual_seed_all(seed)
 
-# %% [markdown]
 # ### 1.2 데이터 분석
 
-# %%
 # 업로드한 노트북도 바로 실행할 수 있도록 Colab의 기본 임시 작업 폴더를 사용한다.
 # Jupyter-only command: %cd /content
 # Jupyter-only command: %ls
 
-# %%
 # Kaggle의 공개 Face Mask Detection 데이터셋을 내려받아 dataset 폴더에 압축 해제한다.
 # Jupyter-only command: !wget -q -O face-mask-detection.zip https://www.kaggle.com/api/v1/datasets/download/andrewmvd/face-mask-detection
 # Jupyter-only command: !unzip -qo face-mask-detection.zip -d dataset
 
-# %%
 print(os.listdir("dataset"))
 
-# %%
 print(os.listdir("dataset/images")[:10])
 
-# %%
 print(os.listdir("dataset/annotations")[:10])
 
-# %%
 with open("dataset/annotations/maksssksksss457.xml", encoding="utf-8") as annot_file:
   print(annot_file.read())
 
-# %%
 def read_annot(file_name, xml_dir):
   bbox = []
   labels = []
@@ -122,7 +108,6 @@ def read_annot(file_name, xml_dir):
 
   return bbox, labels
 
-# %%
 def draw_boxes(img, boxes, labels, thickness=1):
   # Matplotlib은 RGB, OpenCV의 그리기 함수는 BGR 색상 순서를 사용하므로 변환한다.
   img = cv2.cvtColor(img, cv2.COLOR_RGB2BGR)
@@ -138,7 +123,6 @@ def draw_boxes(img, boxes, labels, thickness=1):
   # 화면 출력에 사용할 수 있도록 다시 RGB 순서로 되돌린다.
   return cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
 
-# %%
 dir_path = 'dataset/images'
 xml_path = 'dataset/annotations'
 
@@ -147,7 +131,6 @@ file_list = os.listdir(dir_path)
 # os.listdir()가 반환한 파일 이름의 개수로 전체 이미지 수를 확인한다.
 print('Total {} images.'.format(len(file_list)))
 
-# %%
 image_name = "maksssksksss457.png"
 bbox, labels  = read_annot(image_name, xml_path)
 
@@ -156,10 +139,8 @@ img = draw_boxes(plt.imread(os.path.join(dir_path, image_name)), bbox, labels)
 plt.imshow(img)
 plt.axis('off')
 
-# %% [markdown]
 # ### 1.3 데이터셋
 
-# %%
 class MaskDataset(Dataset):
   def __init__(self, root_dir, transform=None):
     self.root_dir = root_dir
@@ -204,7 +185,6 @@ class MaskDataset(Dataset):
     # len(dataset)은 전체 이미지 개수를 반환한다.
     return len(self.image_list)
 
-# %%
 # pascal_voc 형식은 상자를 [xmin, ymin, xmax, ymax] 순서로 표현한다.
 # 너무 작거나 변환 후 거의 보이지 않는 상자는 제거한다.
 bbox_params = A.BboxParams(
@@ -247,7 +227,6 @@ def collate_fn(batch):
     # 텐서로 쌓지 않고 이미지 묶음과 정답 묶음으로 각각 나누어 반환한다.
     return tuple(zip(*batch))
 
-# %%
 mask_dataset = MaskDataset("dataset", train_transform)
 
 mask_loader = DataLoader(mask_dataset,
@@ -256,7 +235,6 @@ mask_loader = DataLoader(mask_dataset,
                               num_workers=0,
                               collate_fn=collate_fn)
 
-# %%
 for image, target in mask_loader:
   # PyTorch 이미지는 (채널, 높이, 너비)이므로 화면 출력용 (높이, 너비, 채널)로 바꾼다.
   img = np.transpose(image[0].numpy(), (1, 2, 0))
@@ -267,7 +245,6 @@ for image, target in mask_loader:
 
   break
 
-# %%
 def get_dataset(
     root, train=0.8, val=0.1,
     train_transforms=None, test_transforms=None,
@@ -303,10 +280,8 @@ def get_dataset(
 trainset, valset, testset = get_dataset('dataset')
 print(len(trainset), len(valset), len(testset))
 
-# %% [markdown]
 # ### 1.3 FasterRCNN 모델
 
-# %%
 def load_model(num_classes=3):
   # COCO 데이터로 사전 학습된 ResNet50-FPN 기반 Faster R-CNN을 불러온다.
   # 사전 학습된 백본은 일반적인 이미지 특징을 이미 학습한 상태이다.
@@ -318,16 +293,13 @@ def load_model(num_classes=3):
   model.roi_heads.box_predictor = FastRCNNPredictor(in_features, num_classes)
   return model
 
-# %%
 model = load_model()
 
 # 객체 탐지 모델은 이미지 한 장도 배치 차원을 포함한 (1, 3, 448, 448)로 확인한다.
 summary(model, (1, 3, 448, 448))
 
-# %% [markdown]
 # ### 1.5 모델 학습
 
-# %%
 def train(model, dataloader, optimizer, epoch, device):
   # train() 모드의 Faster R-CNN은 이미지와 정답을 받으면 예측값 대신
   # 분류·경계 상자·RPN 등에 대한 손실 딕셔너리를 반환한다.
@@ -363,7 +335,6 @@ def train(model, dataloader, optimizer, epoch, device):
 
   return running_loss/len(dataloader)
 
-# %%
 def validation(model, dataloader, epoch, device,
                threshold_score=0.5, threshold_iou=0.5):
   # eval()은 BatchNorm과 Dropout을 추론 방식으로 동작시킨다.
@@ -431,7 +402,6 @@ def validation(model, dataloader, epoch, device,
 
   return precision, recall, f1
 
-# %%
 EPOCH = 10
 BATCH_SIZE = 4
 NUM_WORKERS = 2
@@ -500,10 +470,8 @@ for epoch in range(EPOCH):
 
 p, r, f1 = validation(model, test_loader, epoch, device)
 
-# %% [markdown]
 # ### 1.6 추론
 
-# %%
 model = load_model()
 
 # 저장된 state_dict를 같은 구조의 새 모델에 적용한다.
@@ -511,7 +479,6 @@ model = load_model()
 model.load_state_dict(torch.load("mask_best.pth", map_location=device))
 model = model.to(device)
 
-# %%
 eval_transform = A.Compose(
   [
     A.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225]),
@@ -545,7 +512,6 @@ def inference(model, image, transform,
 
   return test_boxes, test_labels
 
-# %%
 img_path = "dataset/images/maksssksksss457.png"
 image = cv2.imread(img_path)
 image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)

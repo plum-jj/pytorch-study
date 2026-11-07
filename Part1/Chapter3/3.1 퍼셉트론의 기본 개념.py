@@ -1,14 +1,10 @@
-# %%
 # Converted from: 3.1 퍼셉트론의 기본 개념.ipynb
 # Original .ipynb is preserved alongside this file.
 
-# %% [markdown]
 # # 3.1 퍼셉트론의 기본 개념
 
-# %% [markdown]
 # #### AND 게이트
 
-# %%
 # 셀 1: 퍼셉트론으로 AND 게이트 구현
 
 def AND_gate(x1, x2):
@@ -41,10 +37,8 @@ AND_gate(0, 0), AND_gate(0, 1), AND_gate(1, 0), AND_gate(1, 1)
 # AND_gate(1, 0): 1×0.5 + 0×0.5 - 0.6 = -0.1 → 0
 # AND_gate(1, 1): 1×0.5 + 1×0.5 - 0.6 =  0.4 → 1
 
-# %% [markdown]
 # #### OR 게이트
 
-# %%
 # 셀 2: 퍼셉트론으로 OR 게이트 구현
 
 def OR_gate(x1, x2):
@@ -77,10 +71,8 @@ OR_gate(0, 0), OR_gate(0, 1), OR_gate(1, 0), OR_gate(1, 1)
 # OR_gate(1, 0): 1×0.6 + 0×0.6 - 0.5 =  0.1 → 1
 # OR_gate(1, 1): 1×0.6 + 1×0.6 - 0.5 =  0.7 → 1
 
-# %% [markdown]
 # #### NOT 게이트
 
-# %%
 # 셀 3: 퍼셉트론으로 NOT 게이트 구현
 
 def NOT_gate(x1):

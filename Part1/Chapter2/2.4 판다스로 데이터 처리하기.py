@@ -1,8 +1,6 @@
-# %%
 # Converted from: 2.4 판다스로 데이터 처리하기.ipynb
 # Original .ipynb is preserved alongside this file.
 
-# %%
 # 셀 1: DataFrame 생성
 
 import pandas as pd
@@ -46,7 +44,6 @@ my_series = pd.Series({
 })
 display(pd.DataFrame(my_series))
 
-# %%
 import pandas as pd
 import numpy as np
 
@@ -89,7 +86,6 @@ students = pd.DataFrame({
 
 print(students)
 
-# %%
 # 셀 2: 행과 열 정보 확인
 
 df = pd.DataFrame(
@@ -132,7 +128,6 @@ print(len(df.columns), list(df.columns))
 # 출력 결과:
 # 3 ['a', 'b', 'c']
 
-# %%
 # 셀 3: 특정 열을 인덱스로 설정
 
 df = pd.DataFrame({
@@ -148,7 +143,6 @@ df = df.set_index("id")
 display(df)
 
 
-# %%
 # 셀 4: loc으로 데이터 선택
 
 # loc은 인덱스 이름과 열 이름을 이용해 원하는 데이터를 선택한다.
@@ -200,7 +194,6 @@ display(df.loc[[1, 3], ["name", "item"]])
 # 1   Gyuri  jewelry
 # 3    Mong    snack
 
-# %%
 # 셀 5: loc과 iloc의 차이
 
 # loc은 현재 설정된 인덱스 이름과 열 이름을 기준으로 선택한다.
@@ -271,7 +264,6 @@ display(df.iloc[0:2])
 # 1     Gyuri    Seoul  jewelry
 # 2   Eunseop  Incheon   Laptop
 
-# %%
 # 셀 6: 열 이름으로 데이터 선택
 
 # 열 하나를 지정하면 Series로 반환된다.
@@ -281,7 +273,6 @@ display(df["name"])
 display(df[["name", "city"]])
 
 
-# %%
 # 셀 7: 행 인덱스를 설정하는 방법
 
 df = pd.DataFrame({
@@ -362,7 +353,6 @@ display(df)
 # 행 인덱스 이름: A
 # 데이터 열: B, C
 
-# %%
 # 셀 8: 행 추가 및 수정
 
 df = pd.DataFrame({
@@ -389,7 +379,6 @@ display(df)
 df.loc[0] = [100, 101]
 display(df)
 
-# %%
 # 셀 9: 열 추가 및 수정
 
 df = pd.DataFrame({
@@ -427,7 +416,6 @@ display(df)
 # loc은 이름을 기준으로 선택하므로 새 행이나 새 열을 추가할 수 있다.
 # iloc은 위치를 기준으로 선택하므로 기존 행이나 열만 선택·수정할 수 있다.
 
-# %%
 # 셀 10: 행과 열 삭제
 
 df = pd.DataFrame({
@@ -464,7 +452,6 @@ display(df)
 df.drop("A", axis=1, inplace=True)
 display(df)
 
-# %%
 # 셀 11: 중복 인덱스 제거
 
 df = pd.DataFrame(
@@ -520,7 +507,6 @@ display(df)
 # 다음 코드는 인덱스의 중복 여부를 직접 검사하고 마지막 항목만 유지한다.
 # df = df[~df.index.duplicated(keep="last")]
 
-# %%
 # 셀 12: 결측값 제거와 인덱스 재설정
 
 df = pd.DataFrame(

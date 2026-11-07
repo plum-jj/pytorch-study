@@ -1,18 +1,13 @@
-# %%
 # Converted from: Chapter 1 사인 함수 예측하기 copy.ipynb
 # Original .ipynb is preserved alongside this file.
 
-# %% [markdown]
 # # Part 2. 딥러닝 몸풀기
 #
 
-# %% [markdown]
 # ## Chapter 1. 사인 함수 예측하기
 
-# %% [markdown]
 # ### 1.2 3차 다항식 모델 정의하기
 
-# %%
 import math
 import torch
 
@@ -29,14 +24,12 @@ y = torch.sin(x)
 # y: 각 x에 대한 sin(x) 값이 들어 있는 1차원 텐서
 # x와 y의 원소 개수는 각각 1,000개이다.
 
-# %% [markdown]
 # 이번에 사용할 3차 다항식 모델은 다음과 같이 표현이 가능합니다.
 #
 # $ax^{3}+bx^{2}+cx+d=0,a\neq 0$
 #
 # 이를 식으로 표현해 보겠습니다.
 
-# %%
 # torch.randn(()): 평균 0, 표준편차 1인 정규분포에서 임의의 숫자 하나를 생성한다.
 # 빈 튜플 ()을 전달했기 때문에 원소 하나만 가진 0차원 스칼라 텐서가 만들어진다.
 # 실행할 때마다 값이 달라질 수 있다.
@@ -49,7 +42,6 @@ d = torch.randn(())
 # x의 1,000개 값에 각각 ax³ + bx² + cx + d를 적용한다.
 y_random = (a * x**3) + (b * x**2) + (c * x) + d
 
-# %%
 import matplotlib.pyplot as plt
 
 # plt.subplot(2, 1, 1): 그래프 영역을 2행 1열로 나누고 첫 번째 영역을 선택한다.
@@ -67,10 +59,8 @@ plt.plot(x, y_random)
 
 plt.show()
 
-# %% [markdown]
 # ### 1.3 3차 다항식 모델 학습하기
 
-# %%
 # learning_rate는 한 번의 학습에서 가중치를 얼마나 변경할지 결정한다.
 # 1e-6은 0.000001을 의미한다.
 learning_rate = 1e-6
@@ -116,12 +106,10 @@ for epoch in range(2000):
     if epoch % 100 == 0:
         print("epoch:", epoch, "loss:", loss)
 
-# %%
 # a는 x³, b는 x², c는 x, d는 상수항에 곱해지는 학습된 가중치이다.
 # 무작위 값에서 시작하기 때문에 실행할 때마다 최종 값이 조금씩 달라질 수 있다.
 print(a, b, c, d)
 
-# %%
 # 셀 6: 실제 사인 함수와 학습된 3차 다항식 비교
 
 plt.subplot(2,1,1)
@@ -135,15 +123,12 @@ plt.plot(x, y_pred)
 
 plt.show()
 
-# %% [markdown]
 # 랜덤으로 초기화 했을때 보다 확실히 비슷하게 예측하고 있는것을 확인할 수 있습니다.
 #
 # 학습 가중치 하나하나마다 미분도하고 업데이트도 해주고 해야할 일이 너무 많다구요? 학습할 가중치가 1조개가 되면 이걸 다 어떻게 하냐구요? 맞습니다. 1조개 가중치를 하나하나 한다면 1조줄 짜리 코드가 생기겠죠. 걱정하지마세요. 파이토피에서는 자동 미분과 최적화기를 통해 기울기를 구하는 과정과 가중치를 업데이트 하는 과정을 편리하게 할 수 있도록 제공하고 있습니다. 다음 부터 하나씩 적용해가며 어떻게 사용하는지 알아보겠습니다.
 
-# %% [markdown]
 # ### 1.4 자동 미분(Auto-grad)
 
-# %%
 learning_rate = 1e-6
 
 x = torch.linspace(-math.pi, math.pi, 1000)
@@ -180,7 +165,6 @@ for epoch in range(2000):
     if epoch % 100 == 0:
         print("epoch:", epoch, "loss:", loss.item())
 
-# %%
 # detach(): y_pred를 자동 미분 계산 기록에서 분리한다.
 # NumPy 배열은 CPU 메모리만 사용하므로 GPU 텐서는 먼저 cpu()로 CPU에 옮겨야 한다.
 # 현재 y_pred는 CPU 텐서이므로 cpu() 없이 바로 NumPy 배열로 변환할 수 있다.
@@ -198,12 +182,10 @@ plt.plot(x, y_pred)
 
 plt.show()
 
-# %% [markdown]
 # ### 1.5 파이토치 모듈 사용하기
 #
 # 파이토치는 모델을 nn.Module을 상속받는 클래스 형태로 정의하여 사용하는 스타일을 권장하고 있습니다. 앞서 사용한 3차 다항식모델을 nn.Module을 이용한 모델로 만들어 보겠습니다.
 
-# %%
 import torch
 import torch.nn as nn
 
@@ -235,7 +217,6 @@ class LegendrePolynomial3(nn.Module):
             + self.d
         )
 
-# %%
 learning_rate = 1e-6
 
 x = torch.linspace(-math.pi, math.pi, 1000)
@@ -271,7 +252,6 @@ for epoch in range(2000):
     if epoch % 100 == 0:
         print("epoch:", epoch, "loss:", loss.item())
 
-# %%
 # squeeze(): 크기가 1인 차원을 제거한다.
 # 예를 들어 (1000, 1) 모양의 텐서를 (1000,) 모양으로 바꾼다.
 # 현재 x와 y는 이미 (1000,)이므로 실제 모양은 바뀌지 않는다.
@@ -292,10 +272,8 @@ plt.plot(x, y_pred)
 
 plt.show()
 
-# %% [markdown]
 # ### 1.6 최적화 함수
 
-# %%
 learning_rate = 1e-6
 
 x = torch.linspace(-math.pi, math.pi, 1000)
@@ -333,7 +311,6 @@ for epoch in range(2000):
     if epoch % 100 == 0:
         print("epoch:", epoch, "loss:", loss.item())
 
-# %%
 x = x.squeeze()
 
 # clone(): 텐서의 데이터를 별도 메모리에 복사해 독립된 텐서를 만든다.

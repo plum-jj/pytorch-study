@@ -1,14 +1,10 @@
-# %%
 # Converted from: Chapter 1 RNN으로 비트 코인 가격 예측하기.ipynb
 # Original .ipynb is preserved alongside this file.
 
-# %% [markdown]
 # ## Chapter 1 RNN으로 비트 코인 가격 예측하기
 
-# %%
 # Jupyter-only command: !pip install -q torchinfo
 
-# %%
 import os
 import random
 import numpy as np
@@ -26,13 +22,11 @@ import torch
 from torch import nn, optim
 from torchinfo import summary
 
-# %%
 # CUDA GPU 사용 가능 여부에 따라 모델과 텐서를 계산할 장치를 정한다.
 is_cuda = torch.cuda.is_available()
 device = torch.device("cuda" if is_cuda else "cpu")
 print(is_cuda, device)
 
-# %%
 seed = 1202
 random.seed(seed)         # python seed
 np.random.seed(seed)      # numpy seed
@@ -41,13 +35,10 @@ torch.manual_seed(seed)   # torch seed
 if device.type == "cuda":
   torch.cuda.manual_seed_all(seed)  # gpu seed
 
-# %% [markdown]
 # ### 1.3 비트코인 가격 데이터
 
-# %%
 # Jupyter-only command: !wget https://www.cryptodatadownload.com/cdd/Bithumb_BTCKRW_d.csv
 
-# %%
 # skiprows=1은 파일 맨 위의 안내 문구 한 줄을 제외하고 표를 읽는다는 뜻이다.
 df = pd.read_csv("Bithumb_BTCKRW_d.csv", skiprows=1)
 # 문자열 날짜를 Pandas Timestamp로 바꿔 날짜 비교와 정렬이 가능하게 한다.
@@ -59,39 +50,32 @@ df.set_index('Date', inplace=True)
 print(df.shape)
 print(df)
 
-# %%
 # loc[:, ["Close"]]는 모든 행(:)에서 Close 열만 선택하며,
 # 대괄호를 두 겹 사용해 Series가 아닌 2차원 DataFrame 형태를 유지한다.
 df_close = df.loc[:, ["Close"]]
 print(df_close.tail())
 
-# %%
 ax = df_close.plot(rot=45)
 ax.axvline("2017-06-01", linestyle="--", c="black")
 ax.axvline("2020-01-01", linestyle="--", c="red")
 ax.axvline("2020-06-01", linestyle="--", c="green")
 
-# %%
 df_train = df_close[
   # 날짜 인덱스에 조건을 적용해 학습 기간의 행만 남긴다.
   (df_close.index >= "2017-06-01")&(df_close.index < "2020-01-01")
 ]
 print(df_train[:5])
 
-# %%
 scaler = MinMaxScaler()
 # fit_transform()은 최솟값과 최댓값을 학습한 뒤 데이터를 0~1 범위로 변환한다.
 data = scaler.fit_transform(df_train[:5])
 data
 
-# %%
 # inverse_transform()은 정규화된 값을 원래 가격 단위로 되돌린다.
 scaler.inverse_transform(data)
 
-# %%
 
 
-# %%
 class BitcoinDataset(Dataset):
   def __init__(self, split="train", seq_len=4):
     self.split = split
@@ -149,14 +133,12 @@ class BitcoinDataset(Dataset):
     # 만들어진 시계열 입력 묶음의 개수가 Dataset의 길이이다.
     return len(self.data)
 
-# %%
 trainset = BitcoinDataset()
 valset = BitcoinDataset(split="val")
 testset = BitcoinDataset(split="test")
 
 print(len(trainset), len(valset), len(testset))
 
-# %%
 def plot_sequence(x, y):
   plt.ylabel("Scaled Close")
   plt.xlabel("Time Bars")
@@ -164,7 +146,6 @@ def plot_sequence(x, y):
   plt.plot(range(1, len(x)+1), y, color='b', linestyle='--', label='Target')
   plt.legend()
 
-# %%
 plt.figure(figsize=(10,2))
 for i, (x, y) in enumerate(trainset):
   plt.subplot(1, 3, i+1)
@@ -173,18 +154,15 @@ for i, (x, y) in enumerate(trainset):
   if i == 2:
     break
 
-# %% [markdown]
 # ### 1.4 LSTM 모델
 #
 
-# %%
 # 각 시점의 종가 1개를 입력받아 다음 시점의 종가 1개를 예측한다.
 # batch_first=True이므로 입력 모양은 (배치, 시점 4개, 특성 1개)이다.
 model = nn.LSTM(1, 1, batch_first=True)
 # summary()는 입력 모양을 기준으로 계층별 출력 크기와 파라미터 수를 보여준다.
 summary(model, input_size=(1, 4, 1))
 
-# %%
 # LSTM은 모든 시점의 출력과 마지막 은닉 상태·셀 상태를 함께 반환한다.
 # 여기서는 (배치 1개, 시점 4개, 입력 특성 1개) 형태로 동작을 확인한다.
 output, (hidden_state, cell_state) = model(torch.randn((1, 4, 1)).to(device))
@@ -192,10 +170,8 @@ print(output)
 print(hidden_state)
 print(cell_state)
 
-# %% [markdown]
 # ### 1.5 모델 학습
 
-# %%
 def train(model, dataloader, criterion, optimizer, epoch, device):
   # train()은 모델을 학습 모드로 전환한다.
   model.train()
@@ -222,7 +198,6 @@ def train(model, dataloader, criterion, optimizer, epoch, device):
 
   return running_loss/len(dataloader)
 
-# %%
 def validation(model, dataloader, criterion, epoch, device):
   # eval()은 모델을 평가 모드로 전환한다.
   model.eval()
@@ -244,7 +219,6 @@ def validation(model, dataloader, criterion, epoch, device):
 
   return running_loss/len(dataloader)
 
-# %%
 EPOCH = 60
 BATCH_SIZE = 128
 NUM_WORKERS = 2
@@ -298,10 +272,8 @@ for epoch in range(EPOCH):
     torch.save(model.state_dict(), "bitcoin_best.pth")
     min_loss = vloss
 
-# %% [markdown]
 # ### 1.6 추론
 
-# %%
 def test(model, dataloader, device):
   model.eval()
 
@@ -320,7 +292,6 @@ def test(model, dataloader, device):
   # 여러 배치의 예측을 첫 번째 차원으로 이어 하나의 텐서로 만든다.
   return torch.cat(predicts)
 
-# %%
 def show_plot(model, dataloader, device):
   # Dataset이 정규화할 때 저장한 scaler를 사용해야 같은 가격 단위로 복원된다.
   scaler = dataloader.dataset.scaler
@@ -335,16 +306,12 @@ def show_plot(model, dataloader, device):
   )
   df.plot(figsize=(14,5))
 
-# %%
 model = nn.LSTM(1, 1, batch_first=True).to(device)
 # CPU에서도 GPU 저장 모델을 읽을 수 있도록 현재 장치로 위치를 변환해 불러온다.
 model.load_state_dict(torch.load("bitcoin_best.pth", map_location=device))
 
-# %%
 show_plot(model, train_loader, device)
 
-# %%
 show_plot(model, val_loader, device)
 
-# %%
 show_plot(model, test_loader, device)

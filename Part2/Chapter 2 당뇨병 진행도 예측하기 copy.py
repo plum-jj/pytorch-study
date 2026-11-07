@@ -1,16 +1,12 @@
-# %%
 # Converted from: Chapter 2 당뇨병 진행도 예측하기 copy.ipynb
 # Original .ipynb is preserved alongside this file.
 
-# %% [markdown]
 # # Part 2. 딥러닝 몸풀기
 # ## Chapter 2. 당뇨병 진행도 예측하기
 
-# %% [markdown]
 # ### 2.1 데이터 살펴보기
 # 당뇨병 진행도 데이터셋은 머신러닝 라이브러리중 하나인 scikit-learn에서 제공하고 있습니다. 다음과 같이 불러와 사용할 수 있습니다.
 
-# %%
 from sklearn.datasets import load_diabetes
 
 # load_diabetes(): scikit-learn에 포함된 당뇨병 진행도 예제 데이터를 불러온다.
@@ -25,12 +21,10 @@ dataset = load_diabetes()
 # data에는 입력 데이터, target에는 예측할 진행도, feature_names에는 특성 이름이 들어 있다.
 print(dataset.keys())
 
-# %%
 # DESCR에는 데이터의 출처, 표본 수, 특성 정보와 각 특성의 의미가 문자열로 저장되어 있다.
 # Bunch 객체이므로 dataset["DESCR"]처럼 키로 접근하거나 dataset.DESCR처럼 속성으로 접근할 수 있다.
 print(dataset.DESCR)
 
-# %%
 import pandas as pd
 
 # dataset.data에는 환자 442명의 특성 10개가 NumPy 배열로 들어 있다.
@@ -48,7 +42,6 @@ df["target"] = dataset.target
 # head(): DataFrame의 가장 위에 있는 행 5개를 반환한다.
 print(df.head())
 
-# %%
 import matplotlib.pyplot as plt
 
 # plt.figure(): 여러 그래프를 올려놓을 새로운 전체 도화지인 Figure를 만든다.
@@ -67,13 +60,10 @@ for i in range(10):
 
 plt.show()
 
-# %% [markdown]
 # 각 피쳐값과 타겟값의 상관성을 보기위해 분산형 차트로 데이터셋을 나타내 보았습니다.
 
-# %% [markdown]
 # ### 2.2 모델 구현 및 학습
 
-# %%
 import torch
 import torch.nn as nn
 
@@ -132,10 +122,8 @@ for epoch in range(epochs):
     if epoch % 2000 == 0:
         print("epoch:", epoch, "loss:", loss.item())
 
-# %% [markdown]
 # ### 2.3 모델 성능 평가
 
-# %%
 import matplotlib.pyplot as plt
 
 # eval(): 모델을 학습 모드에서 평가 모드로 전환한다.
@@ -155,7 +143,6 @@ actual = Y.squeeze(dim=1)
 plt.scatter(actual.numpy(), pred.numpy())
 plt.show()
 
-# %%
 # 환자별로 예측값에서 실제 진행도를 뺀 오차를 계산한다.
 # pred와 actual은 모두 (442,) 모양이므로 같은 위치끼리 계산된다.
 errors = pred - actual
@@ -170,7 +157,6 @@ rmse = errors.pow(2).mean().sqrt()
 
 print("MAE:", mae.item(), "RMSE:", rmse.item())
 
-# %%
 # 학습한 모델과 구조는 같지만 가중치가 무작위인 새 모델을 만든다.
 # 최적화 과정을 실행하지 않으므로 학습 전 기준 성능을 확인할 수 있다.
 untrained_model = nn.Sequential(

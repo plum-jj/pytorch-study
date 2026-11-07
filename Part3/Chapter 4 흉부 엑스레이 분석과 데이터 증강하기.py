@@ -1,12 +1,9 @@
-# %%
 # Converted from: Chapter 4 흉부 엑스레이 분석과 데이터 증강하기.ipynb
 # Original .ipynb is preserved alongside this file.
 
-# %% [markdown]
 # # 딥러닝의 기본 이미지 분류하기
 # ## Chapter 4 흉부 엑스레이 분석과 데이터 증강하기
 
-# %%
 import os
 from pathlib import Path
 import random
@@ -35,22 +32,17 @@ torch.manual_seed(seed)   # torch seed
 if device.type == "cuda":
   torch.cuda.manual_seed_all(seed)  # gpu seed
 
-# %% [markdown]
 # ### 4.1 데이터셋
 
-# %%
 # %cd는 Colab의 현재 작업 폴더를 바꾸는 명령으로 로컬에서는 실제 경로에 맞춰야 한다.
 # Jupyter-only command: %cd /content/drive/MyDrive/Colab\ Notebooks/프로젝트로\ 시작하는\ Pytorch/5.4
 
-# %%
 # -qq는 출력 최소화, -n은 기존 파일을 덮어쓰지 않음, -d는 압축 해제 폴더를 뜻한다.
 # Jupyter-only command: !unzip -qq -n "Chest X-Ray Pneumonia.zip" -d dataset
 
-# %%
 # NORMAL과 PNEUMONIA 하위 폴더가 있는지 확인한다.
 # Jupyter-only command: %ls dataset/chest_xray/train
 
-# %%
 import os
 
 print("Train")
@@ -66,7 +58,6 @@ print("Test")
 print("NORMAL:", len(os.listdir("dataset/chest_xray/test/NORMAL")), end=', ')
 print("PNEUMONIA:", len(os.listdir("dataset/chest_xray/test/PNEUMONIA")))
 
-# %%
 from PIL import Image
 import matplotlib.pyplot as plt
 
@@ -93,10 +84,8 @@ for i in range(10):
   ax.set_aspect('auto')
 plt.show()
 
-# %% [markdown]
 # #### 이미지 폴더(ImageFolder)
 
-# %%
 def get_dataset(
     root="dataset/chest_xray", val=0.1,
     train_transforms=None, test_transforms=None
@@ -129,33 +118,27 @@ def get_dataset(
 trainset, valset, testset = get_dataset(train_transforms=transforms.ToTensor())
 print(len(trainset), len(valset), len(testset))
 
-# %%
 class_names = trainset.dataset.classes
 # class_to_idx는 폴더 이름을 정답 번호로 연결한 딕셔너리이다.
 print(class_names)
 print(trainset.dataset.class_to_idx)
 
-# %%
 image, label = trainset[0]
 
 # ToTensor를 거친 흉부 영상은 (채널, 높이, 너비) 모양이다.
 print(image.shape)
 print(label)
 
-# %% [markdown]
 # ### 4.2 데이터 증강과 Albumentation
 
-# %%
 # Jupyter-only command: !pip install -q -U opencv-python
 # Jupyter-only command: !pip install -q -U albumentations
 
-# %%
 import cv2
 from torchvision.datasets import ImageFolder
 import albumentations as A
 from albumentations.pytorch import ToTensorV2
 
-# %%
 train_transform = transforms.Compose([
         # 회전 후 무작위 영역을 잘라 환자의 자세와 촬영 위치 차이를 흉내 낸다.
         transforms.Resize((256, 256)),
@@ -181,7 +164,6 @@ for i in tqdm(train_loader):
   pass
 
 
-# %%
 class AlbumentationsDataset(ImageFolder):
 
   def __getitem__(self, index: int):
@@ -198,7 +180,6 @@ class AlbumentationsDataset(ImageFolder):
 
     return image, target
 
-# %%
 def get_dataset_v2(root="dataset/chest_xray", val=0.1, train_transforms=None, test_transforms=None):
   train_origin = AlbumentationsDataset(
       os.path.join(root, 'train'),
@@ -223,7 +204,6 @@ def get_dataset_v2(root="dataset/chest_xray", val=0.1, train_transforms=None, te
 trainset, valset, testset = get_dataset_v2(train_transforms=None)
 print(len(trainset), len(valset), len(testset))
 
-# %%
 import albumentations as A
 from albumentations.pytorch import ToTensorV2
 
@@ -251,10 +231,8 @@ train_loader = DataLoader(
 for i in tqdm(train_loader):
     pass
 
-# %% [markdown]
 # #### Albumentation만의 특별한 기능
 
-# %%
 test_transform = A.Compose([
         A.Resize(256,256),
         # OneOf는 목록 중 한 변환만 선택한다. 바깥 p=1이므로 항상 하나를 적용한다.
@@ -273,7 +251,6 @@ test_transform = A.Compose([
         ToTensorV2(),
 ])
 
-# %%
 data_dir = Path("dataset/chest_xray/")
 testset = AlbumentationsDataset(data_dir / 'test', transform=test_transform)
 
@@ -284,10 +261,8 @@ for i in range(num_samples):
   ax[i].imshow(transforms.ToPILImage()(testset[0][0]))
   ax[i].axis('off')
 
-# %% [markdown]
 # ### 4.3 학습 모델(ResNet18)
 
-# %%
 import torchvision.models as models
 from torchvision.models.resnet import ResNet18_Weights
 
@@ -295,7 +270,6 @@ from torchvision.models.resnet import ResNet18_Weights
 model = models.resnet18(weights=ResNet18_Weights.IMAGENET1K_V1)
 print(model)
 
-# %%
 def load_resnet():
   model = models.resnet18(weights=ResNet18_Weights.IMAGENET1K_V1)
   # 마지막 출력을 정상/폐렴 이진 분류에 사용할 하나의 점수(logit)로 바꾼다.
@@ -304,16 +278,12 @@ def load_resnet():
 
   return model
 
-# %% [markdown]
 # ### 4.4 학습 및 기록(Wandb)
 
-# %%
 # Jupyter-only command: !pip install -q wandb
 
-# %%
 # Jupyter-only command: !wandb login
 
-# %%
 def train(model, dataloader, criterion, optimizer, epoch, device):
   # model.train(): Dropout과 BatchNorm을 학습 모드로 전환한다.
   model.train()
@@ -354,7 +324,6 @@ def train(model, dataloader, criterion, optimizer, epoch, device):
 
   return running_loss/len(dataloader), acc
 
-# %%
 def validation(model, dataloader, criterion, epoch, device):
   # model.eval(): Dropout과 BatchNorm을 검증 모드로 전환한다.
   model.eval()
@@ -386,7 +355,6 @@ def validation(model, dataloader, criterion, epoch, device):
 
   return running_loss/len(dataloader), acc
 
-# %%
 def test(model, dataloader, device):
     # 테스트에서는 학습된 가중치를 변경하지 않고 최종 성능만 측정한다.
     model.eval()
@@ -416,7 +384,6 @@ def test(model, dataloader, device):
 
     return 100. * correct / data_num, torch.cat(y_true), torch.cat(y_pred)
 
-# %%
 import wandb
 
 # wandb.init(): 이번 학습 실행(run)을 생성하고 지표와 결과물을 기록할 준비를 한다.

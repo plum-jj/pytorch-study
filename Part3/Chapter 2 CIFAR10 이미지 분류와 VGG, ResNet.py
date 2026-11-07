@@ -1,12 +1,9 @@
-# %%
 # Converted from: Chapter 2 CIFAR10 이미지 분류와 VGG, ResNet.ipynb
 # Original .ipynb is preserved alongside this file.
 
-# %% [markdown]
 # # 딥러닝의 기본 이미지 분류하기
 # ## Chapter 2 CIFAR10 이미지 분류와 VGG, ResNet
 
-# %%
 import random
 
 import torch
@@ -32,10 +29,8 @@ torch.manual_seed(seed)
 if device.type == "cuda":
     torch.cuda.manual_seed_all(seed)
 
-# %% [markdown]
 # ### 2.1 CIFAR10 데이터셋
 
-# %%
 from torchvision import datasets
 
 # CIFAR-10은 32×32 컬러 이미지로 구성된 10개 클래스 분류 데이터셋이다.
@@ -43,7 +38,6 @@ from torchvision import datasets
 trainset = datasets.CIFAR10("CIFAR", train=True, download=True)
 testset = datasets.CIFAR10("CIFAR", train=False, download=True)
 
-# %%
 import pandas as pd
 
 # targets에는 각 이미지의 정답이 0~9의 클래스 번호로 저장되어 있다.
@@ -57,7 +51,6 @@ df = pd.DataFrame(testset.targets)
 df_count = df.groupby(0)[0].count()
 print(df_count)
 
-# %%
 classes = ('plane', 'car', 'bird', 'cat',
            'deer', 'dog', 'frog', 'horse', 'ship', 'truck')
 
@@ -72,10 +65,8 @@ for i in range(24):
     plt.axis("off")
 plt.show()
 
-# %% [markdown]
 # ## 학습
 
-# %%
 from torch.utils.data import random_split
 
 
@@ -126,7 +117,6 @@ def get_cifar_datasets(val=0.2, root_dir='CIFAR/'):
 
 dataset_list = get_cifar_datasets()
 
-# %%
 def train(model, dataloader, criterion, optimizer, epoch, device):
     model.train()
     running_loss = 0
@@ -158,7 +148,6 @@ def train(model, dataloader, criterion, optimizer, epoch, device):
 
     return running_loss / len(dataloader)
 
-# %%
 def validation(model, dataloader, criterion, epoch, device):
     model.eval()
     correct = 0
@@ -184,7 +173,6 @@ def validation(model, dataloader, criterion, epoch, device):
 
     return running_loss / len(dataloader)
 
-# %%
 def test(model, dataloader, device):
     model.eval()
     correct = 0
@@ -200,16 +188,12 @@ def test(model, dataloader, device):
     accuracy = 100.0 * correct / data_num
     print(f"Test Accuracy: {correct}/{data_num} ({accuracy:.2f}%)")
 
-# %% [markdown]
 # ## 모델
 
-# %%
 # Jupyter-only command: !pip install -q torchsummary
 
-# %% [markdown]
 # ### VGG
 
-# %%
 import math
 from collections import OrderedDict
 
@@ -279,13 +263,11 @@ class VGG(nn.Module):
         x = self.fc(x)                     # (배치 크기, num_classes)
         return x
 
-# %%
 from torchsummary import summary
 
 # summary(): 입력 크기를 기준으로 계층별 출력 모양과 매개변수 수를 보여준다.
 summary(VGG('VGG16', 10).to(device), (3, 32, 32))
 
-# %%
 # VGG16 학습에 사용할 하이퍼파라미터이다.
 EPOCH = 50
 BATCH_SIZE = 32
@@ -329,10 +311,8 @@ for epoch in range(1, EPOCH + 1):
     val_losses.append(vloss)
 
 test(model, test_loader, device)
-# %% [markdown]
 # ## ResNet
 
-# %%
 # 아래 ResNet 블록들은 합성곱 바로 뒤에서 BatchNorm이 편향 역할까지 하므로
 # 중복되는 편향 매개변수를 만들지 않도록 Conv2d에 bias=False를 사용한다.
 class BasicBlock(nn.Module):
@@ -498,11 +478,9 @@ def ResNet101():
 def ResNet152():
     return ResNet(Bottleneck, [3, 8, 36, 3])
 
-# %%
 # ResNet18에 3×32×32 이미지가 들어갈 때의 계층별 모양을 확인한다.
 summary(ResNet18().to(device), (3, 32, 32))
 
-# %%
 # 같은 학습 조건에서 모델만 ResNet18로 바꾸어 성능을 비교한다.
 EPOCH = 50
 BATCH_SIZE = 32

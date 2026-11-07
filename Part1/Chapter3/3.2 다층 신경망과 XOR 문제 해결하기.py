@@ -1,11 +1,8 @@
-# %%
 # Converted from: 3.2 다층 신경망과 XOR 문제 해결하기.ipynb
 # Original .ipynb is preserved alongside this file.
 
-# %% [markdown]
 # # 다층 신경망과 XOR 문제 해결하기
 
-# %%
 # 셀 1: 퍼셉트론으로 NAND 게이트 구현
 
 def NAND_gate(x1, x2):
@@ -39,7 +36,6 @@ NAND_gate(0, 0), NAND_gate(0, 1), NAND_gate(1, 0), NAND_gate(1, 1)
 # NAND_gate(1, 0): 1×(-0.5) + 0×(-0.5) + 0.6 =  0.1 → 1
 # NAND_gate(1, 1): 1×(-0.5) + 1×(-0.5) + 0.6 = -0.4 → 0
 
-# %%
 def OR_gate(x1, x2):
   # weights
   w1 = 0.5
@@ -55,7 +51,6 @@ def OR_gate(x1, x2):
   else:
     return 0
 
-# %%
 # 셀 3: XOR 신경망의 첫 번째 계층 구현
 
 # step_function(): 계산값이 0보다 크면 1, 그렇지 않으면 0을 반환한다.
@@ -92,7 +87,6 @@ def layer1(x1, x2):
 # layer1(1, 0) → (NAND=1, OR=1)
 # layer1(1, 1) → (NAND=0, OR=1)
 
-# %%
 # 셀 4: 두 계층을 연결해 XOR 게이트 구현
 
 def layer2(x1, x2):

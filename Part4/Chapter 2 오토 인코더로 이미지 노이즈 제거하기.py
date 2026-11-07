@@ -1,14 +1,10 @@
-# %%
 # Converted from: Chapter 2 오토 인코더로 이미지 노이즈 제거하기.ipynb
 # Original .ipynb is preserved alongside this file.
 
-# %% [markdown]
 # ## Chapter 2 오토 인코더로 이미지 노이즈 제거하기
 
-# %%
 # Jupyter-only command: !pip install -q torchinfo
 
-# %%
 import random
 import numpy as np
 import pandas as pd
@@ -39,13 +35,11 @@ import torchvision
 # summary는 입력 크기를 기준으로 모델의 계층과 출력 모양을 요약한다.
 from torchinfo import summary
 
-# %%
 # CUDA GPU 사용 가능 여부를 확인한 뒤 모델과 텐서를 계산할 장치를 정한다.
 is_cuda = torch.cuda.is_available()
 device = torch.device("cuda" if is_cuda else "cpu")
 print(is_cuda, device)
 
-# %%
 seed = 322
 
 # 파이썬, NumPy, PyTorch가 같은 난수 흐름을 사용하도록 시드를 고정한다.
@@ -57,16 +51,13 @@ torch.manual_seed(seed)
 if device.type == "cuda":
   torch.cuda.manual_seed_all(seed)
 
-# %% [markdown]
 # ### 2.1 데이터 분석
 
-# %%
 # 이 셀은 Colab의 현재 작업 폴더를 Chapter 2 실습 폴더로 이동하고 파일을 확인한다.
 # 로컬 파이썬에서는 실제 데이터 경로에 맞게 수정해야 한다.
 # Jupyter-only command: %cd /content/drive/MyDrive/Colab\ Notebooks/프로젝트로\ 시작하는\ Pytorch/6.2
 # Jupyter-only command: %ls
 
-# %%
 def gaussian_noise(image, scale=0.8):
   # np.random.normal(): image와 같은 모양으로 평균 0, 표준편차 scale인 가우시안 잡음을 만든다.
   # 평균이 0이라는 것은 생성 범위가 0부터 시작한다는 뜻이 아니라, 잡음이 0을 중심으로 분포한다는 뜻이다.
@@ -78,13 +69,11 @@ def gaussian_noise(image, scale=0.8):
   noised = torch.tensor(noised).float()
   return noised
 
-# %%
 base_dir = "dataset"
 # MNIST(): 손글씨 이미지 데이터를 내려받아 dataset 폴더에 저장한다.
 # train=True이므로 학습용 이미지 60,000개를 불러온다.
 mnist = MNIST(base_dir, train=True, download=True)
 
-# %%
 image = mnist.data[123]
 plt.subplot(1, 2, 1)
 plt.title("origin")
@@ -93,10 +82,8 @@ plt.subplot(1, 2, 2)
 plt.title("noised")
 plt.imshow(gaussian_noise(image))
 
-# %% [markdown]
 # ### 2.2 데이터셋
 
-# %%
 class NoisedDataset(Dataset):
   def __init__(self, root, train):
     # train 값이 True이면 학습용 60,000개, False이면 평가용 10,000개를 사용한다.
@@ -113,10 +100,8 @@ class NoisedDataset(Dataset):
     # DataLoader가 전체 데이터 개수를 알 수 있도록 MNIST의 길이를 반환한다.
     return len(self.mnist)
 
-# %%
 trainset = NoisedDataset(base_dir, True)
 
-# %%
 noised, origin = trainset[123]
 plt.subplot(1, 2, 1)
 plt.title("origin")
@@ -125,7 +110,6 @@ plt.subplot(1, 2, 2)
 plt.title("noised")
 plt.imshow(noised.squeeze())
 
-# %%
 def get_dataset(root):
   # 같은 Dataset 클래스를 train 값만 다르게 호출해 학습용과 검증용 데이터를 나눈다.
   train = NoisedDataset(root, True)
@@ -136,10 +120,8 @@ def get_dataset(root):
 trainset, valset  = get_dataset(base_dir)
 print(len(trainset), len(valset))
 
-# %% [markdown]
 # ### 2.3 오토 인코더(Auto-Encoder) 모델
 
-# %%
 class BasicBlock(nn.Module):
   def __init__(self, in_channels, out_channels, hidden_dims):
     super(BasicBlock, self).__init__()
@@ -160,12 +142,10 @@ class BasicBlock(nn.Module):
   def forward(self, x):
     return self.block(x)
 
-# %%
 block = BasicBlock(1, 10, 4)
 # 입력은 배치 축을 생략한 (채널 1, 높이 8, 너비 8)이고 출력은 (10, 8, 8)이 된다.
 block(torch.rand((1, 8, 8))).shape
 
-# %%
 class Encoder(nn.Module):
   def __init__(self):
     super(Encoder, self).__init__()
@@ -184,11 +164,9 @@ class Encoder(nn.Module):
   def forward(self, x):
     return self.encoder(x)
 
-# %%
 encoder = Encoder()
 encoder(torch.rand((1, 8, 8))).shape
 
-# %%
 class Decoder(nn.Module):
   def __init__(self):
     super(Decoder, self).__init__()
@@ -214,11 +192,9 @@ class Decoder(nn.Module):
   def forward(self, x):
     return self.decoder(x)
 
-# %%
 decoder = Decoder()
 decoder(torch.rand((8, 2, 2))).shape
 
-# %%
 class CAE(nn.Module):
   def __init__(self):
     super(CAE, self).__init__()
@@ -233,18 +209,14 @@ class CAE(nn.Module):
     # squeeze(): 크기가 1인 축을 제거한다. 배치가 1일 때는 배치 축까지 사라질 수 있다.
     return x.squeeze()
 
-# %%
 cae = CAE()
 cae(torch.rand((1, 8, 8))).shape
 
-# %%
 # summary(): (채널 1, 28, 28) 입력을 기준으로 계층별 출력 크기와 파라미터 수를 확인한다.
 summary(cae, (1, 28, 28))
 
-# %% [markdown]
 # ### 2.4 모델 학습
 
-# %%
 def train(model, dataloader, criterion, optimizer, epoch, device):
   # train(): Dropout, BatchNorm 등이 학습 모드로 동작하게 한다.
   model.train()
@@ -270,7 +242,6 @@ def train(model, dataloader, criterion, optimizer, epoch, device):
 
   return running_loss/len(dataloader)
 
-# %%
 def validation(model, dataloader, criterion, epoch, device):
   # eval(): 검증 중 모델을 평가 모드로 전환한다.
   model.eval()
@@ -292,7 +263,6 @@ def validation(model, dataloader, criterion, epoch, device):
 
   return running_loss/len(dataloader)
 
-# %%
 EPOCH = 10
 BATCH_SIZE = 32
 NUM_WORKERS = 1
@@ -342,10 +312,8 @@ for epoch in range(EPOCH):
     torch.save(model.state_dict(), "best.pth")
     min_loss = vloss
 
-# %% [markdown]
 # ### 2.5 추론
 
-# %%
 model = CAE()
 # load best model
 # load_state_dict(): best.pth에 저장된 가중치를 같은 구조의 CAE 모델에 적용한다.

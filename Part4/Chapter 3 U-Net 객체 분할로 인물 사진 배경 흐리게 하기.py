@@ -1,14 +1,10 @@
-# %%
 # Converted from: Chapter 3 U-Net 객체 분할로 인물 사진 배경 흐리게 하기.ipynb
 # Original .ipynb is preserved alongside this file.
 
-# %% [markdown]
 # ## Chapter 3 U-Net 객체 분할로 인물 사진 배경 흐리게 하기
 
-# %%
 # Jupyter-only command: !pip install -q torchinfo
 
-# %%
 import random
 import numpy as np
 # tqdm(): 반복문의 진행률과 남은 시간을 진행 막대로 표시한다.
@@ -37,12 +33,10 @@ from torch import nn, optim
 import torchvision
 from torchinfo import summary
 
-# %%
 is_cuda = torch.cuda.is_available()
 device = torch.device("cuda" if is_cuda else "cpu")
 print(is_cuda, device)
 
-# %%
 seed = 130
 random.seed(seed)         # python seed
 np.random.seed(seed)      # numpy seed
@@ -50,29 +44,22 @@ torch.manual_seed(seed)   # torch seed
 if device.type == "cuda":
   torch.cuda.manual_seed_all(seed)  # gpu seed
 
-# %% [markdown]
 # ### 3.1 데이터 분석(EG1800)
 
-# %%
 # 업로드한 노트북도 바로 실행할 수 있도록 Colab의 기본 임시 작업 폴더를 사용한다.
 # Jupyter-only command: %cd /content
 # Jupyter-only command: %ls
 
-# %%
 # PaddleSeg가 제공하는 공개 EG1800 압축 파일을 내려받아 dataset 폴더에 해제한다.
 # Jupyter-only command: !wget -q -O EG1800.zip https://paddleseg.bj.bcebos.com/dataset/EG1800.zip
 # Jupyter-only command: !unzip -qo EG1800.zip -d dataset
 
-# %%
 print(os.listdir("dataset/EG1800"))
 
-# %%
 print(os.listdir("dataset/EG1800/Images")[:10])
 
-# %%
 print(os.listdir("dataset/EG1800/Labels")[:10])
 
-# %%
 base_path = 'dataset/EG1800/'
 # os.path.join(): 운영체제에 맞는 경로 구분자를 사용해 폴더 경로를 안전하게 연결한다.
 image_path = os.path.join(base_path, 'Images')
@@ -83,7 +70,6 @@ file_list = os.listdir(image_path)
 
 print('Total {} images.'.format(len(file_list)))
 
-# %%
 image_name = "00001.png"
 
 # 같은 파일 이름의 원본 이미지와 정답 마스크를 나란히 확인한다.
@@ -94,7 +80,6 @@ plt.subplot(1, 2, 2)
 plt.imshow(plt.imread(os.path.join(label_path, image_name)))
 plt.axis("off")
 
-# %%
 image_name = "00120.png"
 
 plt.subplot(1, 2, 1)
@@ -104,10 +89,8 @@ plt.subplot(1, 2, 2)
 plt.imshow(plt.imread(os.path.join(label_path, image_name)))
 plt.axis("off")
 
-# %% [markdown]
 # ### 3.2 데이터셋
 
-# %%
 class PortraitDataset(Dataset):
   def __init__(self, root_dir, transform=None):
     self.root_dir = root_dir
@@ -145,7 +128,6 @@ class PortraitDataset(Dataset):
     # Dataset의 전체 샘플 수는 이미지 파일 개수와 같다.
     return len(self.file_list)
 
-# %%
 train_transform=A.Compose(
   [
       # A.Compose(): 이미지와 마스크에 적용할 변환을 지정한 순서대로 묶는다.
@@ -167,14 +149,12 @@ test_transform=A.Compose(
   ],
 )
 
-# %%
 portrait_dataset = PortraitDataset(base_path, train_transform)
 
 # DataLoader(): Dataset을 batch_size개씩 묶어 가져온다. shuffle=True이면 에포크마다 순서를 섞는다.
 data_loader = DataLoader(portrait_dataset, batch_size=1,
                         shuffle=True, num_workers=0)
 
-# %%
 for image, target in data_loader:
   # PyTorch 이미지 (채널, 높이, 너비)를 화면 출력용 (높이, 너비, 채널) 순서로 바꾼다.
   img = np.transpose(image[0].numpy(), (1, 2, 0))
@@ -193,7 +173,6 @@ for image, target in data_loader:
 
   break
 
-# %%
 def get_dataset(
     root, train=0.8, val=0.1,
     train_transforms=None, test_transforms=None,
@@ -233,10 +212,8 @@ trainset, valset, testset = get_dataset(base_path,
                                         test_transforms=test_transform)
 print(len(trainset), len(valset), len(testset))
 
-# %% [markdown]
 # ### 3.3 U-Net 모델
 
-# %%
 def conv_bn_relu(in_channels, out_channels, kernel_size=3, stride=1, padding=1):
   # 합성곱 → 배치 정규화 → ReLU를 반복해서 사용하므로 하나의 함수로 묶는다.
   conv = nn.Conv2d(in_channels=in_channels, out_channels=out_channels,
@@ -246,7 +223,6 @@ def conv_bn_relu(in_channels, out_channels, kernel_size=3, stride=1, padding=1):
   relu = nn.ReLU()
   return nn.Sequential(conv, bn, relu)
 
-# %%
 class EncBlock(nn.Module):
   def __init__(self, in_channels, out_channels):
     super(EncBlock, self).__init__()
@@ -258,7 +234,6 @@ class EncBlock(nn.Module):
     x = self.conv2(x)
     return x
 
-# %%
 class DecBlock(nn.Module):
   def __init__(self, in_channels, out_channels, hidden_dims):
     super(DecBlock, self).__init__()
@@ -272,7 +247,6 @@ class DecBlock(nn.Module):
     x = self.conv2(x)
     return x
 
-# %%
 class Encoder(nn.Module):
   def __init__(self):
     super(Encoder, self).__init__()
@@ -293,7 +267,6 @@ class Encoder(nn.Module):
     # 가장 압축된 특징부터 원본에 가까운 특징까지 반환해 디코더의 스킵 연결에 사용한다.
     return [enc5, enc4, enc3, enc2, enc1]
 
-# %%
 class Decoder(nn.Module):
   def __init__(self):
     super(Decoder, self).__init__()
@@ -325,7 +298,6 @@ class Decoder(nn.Module):
     dec1 = self.dec1(x[4], unpool1)
     return dec1
 
-# %%
 class UNet(nn.Module):
   def __init__(self):
     super(UNet, self).__init__()
@@ -340,15 +312,12 @@ class UNet(nn.Module):
     x = self.fc(x)
     return x
 
-# %%
 model = UNet()
 # 배치 1개, RGB 3채널, 224×224 입력을 기준으로 계층별 출력 크기를 확인한다.
 summary(model, (1, 3, 224, 224))
 
-# %% [markdown]
 # ### 3.4 모델 학습
 
-# %%
 def train(model, dataloader, criterion, optimizer, epoch, device):
   model.train()
 
@@ -373,7 +342,6 @@ def train(model, dataloader, criterion, optimizer, epoch, device):
 
   return running_loss/len(dataloader)
 
-# %%
 def validation(model, dataloader, criterion, epoch, device):
   model.eval()
 
@@ -395,7 +363,6 @@ def validation(model, dataloader, criterion, epoch, device):
 
   return running_loss/len(dataloader)
 
-# %%
 EPOCH = 10
 BATCH_SIZE = 32
 NUM_WORKERS = 2
@@ -461,7 +428,6 @@ for epoch in range(EPOCH):
     torch.save(model.state_dict(), "unet_best.pth")
     min_loss = vloss
 
-# %%
 model = UNet()
 # load best model
 model.load_state_dict(torch.load("unet_best.pth", map_location="cpu"))
@@ -491,10 +457,8 @@ with torch.no_grad():
   plt.title("mask")
   plt.axis("off")
 
-# %% [markdown]
 # ### 3.5 추론 및 배경 흐리게 처리하기
 
-# %%
 def inference(image):
   model = UNet()
   # Chapter 3에서 저장한 U-Net 가중치를 불러온다.
@@ -518,7 +482,6 @@ def inference(image):
   mask = sigmoid_output > 0.5
   return mask.squeeze()
 
-# %%
 image_path = 'dataset/EG1800/Images/00131.png'
 image = cv2.imread(image_path)
 image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)

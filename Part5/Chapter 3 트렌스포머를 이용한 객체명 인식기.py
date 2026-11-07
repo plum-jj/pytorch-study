@@ -1,14 +1,10 @@
-# %%
 # Converted from: Chapter 3 트렌스포머를 이용한 객체명 인식기.ipynb
 # Original .ipynb is preserved alongside this file.
 
-# %% [markdown]
 # ## Chapter 3 트렌스포머를 이용한 객체명 인식기
 
-# %%
 # Jupyter-only command: !pip install -q torchinfo
 
-# %%
 import os
 import random
 import numpy as np
@@ -28,12 +24,10 @@ from torch import nn, optim
 from torchinfo import summary
 from torch.nn.utils.rnn import pad_sequence
 
-# %%
 is_cuda = torch.cuda.is_available()
 device = torch.device("cuda" if is_cuda else "cpu")
 print(is_cuda, device)
 
-# %%
 seed = 827
 random.seed(seed)         # python seed
 np.random.seed(seed)      # numpy seed
@@ -41,16 +35,13 @@ torch.manual_seed(seed)   # torch seed
 if device.type == "cuda":
   torch.cuda.manual_seed_all(seed)  # gpu seed
 
-# %% [markdown]
 # ### 3.2 객체명 인식 데이터
 # NAVER NLP 챌린지 데이터셋
 # - 14 종류의 Annotated Entities
 # - 인물(PER), 학문분야(FLD), 인공물(AFW), 기관 및 단체(ORG), 지역명(LOC), 문명 및 문화 (CVL), 날짜(DAT), 시간(TIM), 숫자(NUM), 사건사고 및 행사(EVT), 동물(ANM), 식물(PLT), 금속/암석/화학물질(MAT), 의학용어/IT관련 용어(TRM)
 
-# %%
 # Jupyter-only command: !wget https://raw.githubusercontent.com/naver/nlp-challenge/master/missions/ner/data/train/train_data
 
-# %%
 import os
 
 def train_iter(file_path="train_data", train=True):
@@ -69,24 +60,18 @@ def train_iter(file_path="train_data", train=True):
       sentence[2].append(ner_tag)
   return sentences
 
-# %%
 dl = train_iter()
 dl[3]
 
-# %%
 len(dl)
 
-# %%
 indices, sentences, labels = zip(*dl)
 
-# %%
 print(sentences[0])
 print(labels[0])
 
-# %% [markdown]
 # 네이버 NLP 챌린지 데이터셋은 BIO시스템을 따르는 데이터셋입니다. _B는 Begin의 약자로 해당 단어가 시작할 때, _I는 Inside의 약자로 단어 중간일 때를 의미합니다.
 
-# %%
 UNK_IDX, PAD_IDX, BOS_IDX, EOS_IDX = 0, 1, 2, 3
 special_symbols = ['<unk>', '<pad>', '<bos>', '<eos>']
 
@@ -125,16 +110,12 @@ text_vocab.set_default_index(text_vocab["<unk>"])
 ner_vocab = build_vocab(labels, special_symbols)
 ner_vocab.set_default_index(ner_vocab["<unk>"])
 
-# %%
 print(ner_vocab.get_itos())
 
-# %%
 text_vocab(["오늘도", "빠지지", "말고", "프로젝트로", "시작하는", "파이토치", "공부하자","!"])
 
-# %% [markdown]
 # ### 3.3 데이터셋
 
-# %%
 class NERDataset(Dataset):
   def __init__(self, file_path="train_data"):
     sentences = []
@@ -157,14 +138,11 @@ class NERDataset(Dataset):
   def __len__(self):
     return len(self.texts)
 
-# %%
 ner_dataset = NERDataset()
 ner_dataset[0]
 
-# %%
 max([len(text) for text in ner_dataset.texts])
 
-# %%
 def get_dataset(train=0.8, val=0.1, random_seed=827):
   origin = NERDataset()
 
@@ -179,7 +157,6 @@ def get_dataset(train=0.8, val=0.1, random_seed=827):
 trainset, valset, testset = get_dataset()
 print(len(trainset), len(valset), len(testset))
 
-# %%
 # 순차적인 작업들을 하나로 묶는 헬퍼 함수
 def sequential_transforms(*transforms):
     def func(txt_input):
@@ -211,19 +188,15 @@ def collate_fn(batch):
     tgt_batch = pad_sequence(tgt_batch, padding_value=PAD_IDX)
     return src_batch, tgt_batch
 
-# %%
 dataloader = DataLoader(ner_dataset, batch_size=4, shuffle=False, collate_fn=collate_fn)
 
-# %%
 for labels, texts in dataloader:
   print(labels)
   print(texts)
   break
 
-# %% [markdown]
 # ### 3.4 트렌스포머 모델
 
-# %%
 # 입력 인덱스의 텐서를 해당하는 토큰 임베딩의 텐서로 변환하기 위한 헬퍼 모듈(Module)
 class TokenEmbedding(nn.Module):
     def __init__(self, vocab_size: int, emb_size):
@@ -234,7 +207,6 @@ class TokenEmbedding(nn.Module):
     def forward(self, tokens):
         return self.embedding(tokens.long()) * math.sqrt(self.emb_size)
 
-# %%
 vocab_size = 10
 emb_size = 32
 emb = TokenEmbedding(vocab_size, emb_size)
@@ -244,7 +216,6 @@ sample = torch.randint(0, vocab_size, (seq_len, batch_size))
 print(sample)
 print(emb(sample).shape)
 
-# %%
 # 단어 순서 개념(notion)을 토큰 임베딩에 도입하기 위한 위치 인코딩(positional encoding)을 위한 헬퍼 모듈(Module)
 class PositionalEncoding(nn.Module):
   def __init__(self, emb_size, dropout, maxlen=5000):
@@ -264,7 +235,6 @@ class PositionalEncoding(nn.Module):
     token_embedding += self.pos_embedding[:token_embedding.size(0), :]
     return self.dropout(token_embedding)
 
-# %%
 seq_len, batch_size, emb_size, dropout = 10, 4, 32, 0.1
 pe = PositionalEncoding(emb_size, dropout)
 
@@ -273,7 +243,6 @@ x = pe(sample).shape
 print("PE:    ", pe.pos_embedding[:sample.size(0), :].shape)
 print("RESULT:", x)
 
-# %%
 # Seq2Seq 신경망
 class Seq2SeqTransformer(nn.Module):
   def __init__(self,
@@ -321,16 +290,13 @@ class Seq2SeqTransformer(nn.Module):
                       self.tgt_tok_emb(tgt)), memory,
                       tgt_mask)
 
-# %%
 def generate_square_subsequent_mask(sz):
   mask = (torch.triu(torch.ones((sz, sz), device=device)) == 1).transpose(0, 1)
   mask = mask.float().masked_fill(mask == 0, float('-inf')).masked_fill(mask == 1, float(0.0))
   return mask
 
-# %%
 generate_square_subsequent_mask(4)
 
-# %%
 def create_mask(src, tgt):
   src_seq_len = src.shape[0]
   tgt_seq_len = tgt.shape[0]
@@ -342,15 +308,12 @@ def create_mask(src, tgt):
   tgt_padding_mask = (tgt == PAD_IDX).transpose(0, 1)
   return src_mask, tgt_mask, src_padding_mask, tgt_padding_mask
 
-# %%
 src = torch.Tensor([[5], [5], [5], [1], [1]])
 tgt = torch.Tensor([[5], [5], [1], [1], [1]])
 create_mask(src, tgt)
 
-# %% [markdown]
 # ### 3.5 모델 학습
 
-# %%
 def train(model, dataloader, criterion, optimizer, epoch, device):
   model.train()
 
@@ -386,7 +349,6 @@ def train(model, dataloader, criterion, optimizer, epoch, device):
 
   return final_loss, acc
 
-# %%
 def validation(model, dataloader, criterion, epoch, device):
   model.eval()
 
@@ -418,7 +380,6 @@ def validation(model, dataloader, criterion, epoch, device):
 
   return final_loss, acc
 
-# %%
 EPOCH = 7
 BATCH_SIZE = 64
 NUM_WORKERS = 1
@@ -492,10 +453,8 @@ for epoch in range(EPOCH):
     torch.save(model.state_dict(), "ner_transformer_best.pth")
     print("save model")
 
-# %% [markdown]
 # ### 3.6 추론
 
-# %%
 def greedy_decode(model, src, src_mask, max_len, start_symbol):
   src = src.to(device)
   src_mask = src_mask.to(device)
@@ -530,7 +489,6 @@ def translate(model: torch.nn.Module, src_sentence: str):
       ner_vocab.lookup_tokens(list(tgt_tokens.cpu().numpy()))
     ).replace("<bos>", "").replace("<eos>", "")
 
-# %%
 model.load_state_dict(torch.load("ner_transformer_best.pth", map_location=device))
 tokenizer = lambda text: text.split()
 print(translate(model, tokenizer("12월 25일 부산에서 아시안게임 개최 논의")))

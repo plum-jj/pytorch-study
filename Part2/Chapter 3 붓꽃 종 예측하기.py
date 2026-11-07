@@ -1,15 +1,11 @@
-# %%
 # Converted from: Chapter 3 붓꽃 종 예측하기.ipynb
 # Original .ipynb is preserved alongside this file.
 
-# %% [markdown]
 # # Part 2. 딥러닝 몸풀기
 # ## Chapter 3. 붓꽃 종 예측하기
 
-# %% [markdown]
 # ### 3.1 데이터 살펴보기
 
-# %%
 from sklearn.datasets import load_iris
 
 # load_iris(): scikit-learn에 포함된 붓꽃 분류용 예제 데이터를 불러온다.
@@ -20,13 +16,11 @@ dataset = load_iris()
 # .py 파일에서도 결과가 출력되도록 print()를 사용한다.
 print(dataset.keys())
 
-# %%
 # DESCR에는 표본 수, 특성 이름, 단위, 클래스 구성과 데이터 출처가 들어 있다.
 # 입력 특성은 꽃받침 길이·너비와 꽃잎 길이·너비의 총 4개이다.
 # 예측 대상은 setosa, versicolor, virginica의 세 종류이다.
 print(dataset.DESCR)
 
-# %%
 import pandas as pd
 
 # dataset.data는 붓꽃 150개의 특성 4개를 가진 (150, 4) 배열이다.
@@ -42,10 +36,8 @@ data["target"] = dataset.target
 
 print(data.head())
 
-# %% [markdown]
 # ### 3.2 파이토치 데이터 유틸 사용하기
 
-# %%
 import torch
 from torch.utils.data import Dataset
 from sklearn.model_selection import train_test_split
@@ -93,12 +85,10 @@ class IrisDataset(Dataset):
     def __len__(self):
         return len(self.data)
 
-# %% [markdown]
 # ### 3.3 모델 구현 및 학습
 #
 # 이어서 학습코드를 살펴보겠습니다
 
-# %%
 import torch
 import torch.nn as nn
 from torch.utils.data import DataLoader
@@ -161,10 +151,8 @@ for epoch in range(epochs):
             loss.item(),
         )
 
-# %% [markdown]
 # ### 3.4 모델 성능 평가
 
-# %%
 test_dataset = IrisDataset(train=False)
 
 # 평가 데이터는 45개이고 batch_size는 64이므로 하나의 배치로 처리된다.

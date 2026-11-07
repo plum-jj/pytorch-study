@@ -1,15 +1,11 @@
-# %%
 # Converted from: Chapter 3 개의 품종 분류와 사전 학습하기.ipynb
 # Original .ipynb is preserved alongside this file.
 
-# %% [markdown]
 # # 딥러닝의 기본 이미지 분류하기
 # ## Chapter 3 개의 품종 분류와 사전 학습하기
 
-# %%
 # Jupyter-only command: !pip install -q torchsummary
 
-# %%
 import random
 
 import torch
@@ -34,10 +30,8 @@ torch.manual_seed(seed)
 if device.type == "cuda":
     torch.cuda.manual_seed_all(seed)
 
-# %% [markdown]
 # ### 3.2 데이터셋(개의 품종 분류)
 
-# %%
 # 아래 명령은 파이썬 코드가 아니라 Colab에서 실행하는 운영체제 명령이다.
 # 첫 번째 ls는 압축 파일을 확인하고, unzip은 dataset 폴더에 압축을 풀며,
 # 마지막 ls는 압축 해제 결과를 확인한다. 로컬에서는 실제 경로에 맞게 수정해야 한다.
@@ -45,15 +39,12 @@ if device.type == "cuda":
 # Jupyter-only command: !unzip "drive/MyDrive/Colab Notebooks/Learning-PyTorch-Deeplearning-with-Hands-On-Projects/Part3/3. 개 품종 분류/dog-breed-identification.zip" -d dataset
 # Jupyter-only command: !ls dataset
 
-# %%
 # ls로 파일 이름을 출력하고 wc -l로 줄 수를 세어 이미지 개수를 확인한다.
 # Jupyter-only command: !ls dataset/train | wc -l
 # Jupyter-only command: !ls dataset/test | wc -l
 
-# %% [markdown]
 # #### EDA(탐색적 데이터 분석)
 
-# %%
 import pandas as pd
 from IPython.display import display
 
@@ -62,7 +53,6 @@ df = pd.read_csv("dataset/labels.csv")
 # head()는 품종 라벨 CSV의 처음 5개 행을 보여준다.
 display(df.head())
 
-# %%
 # 품종별 행을 묶어 이미지 개수를 센다.
 df_count = df.groupby(["breed"])["breed"].count()
 
@@ -81,7 +71,6 @@ print("median:", df_count["count"].median())
 # 품종마다 데이터 수가 크게 치우쳐 있는지 막대그래프로 확인한다.
 df_count.plot(kind="bar", x="breed", y="count", figsize=(20, 3))
 
-# %%
 import matplotlib.pyplot as plt
 from PIL import Image
 
@@ -95,10 +84,8 @@ for i in range(9):
     plt.imshow(img)
     plt.axis("off")
 
-# %% [markdown]
 # ##### 데이터셋
 
-# %%
 from os.path import join
 
 from PIL import Image
@@ -154,7 +141,6 @@ class Dogs(Dataset):
 
         return image, label
 
-# %%
 def get_dogs_datasets(
     val=0.2, root='dataset',
     train_transforms=None, test_transforms=None):
@@ -192,10 +178,8 @@ def get_dogs_datasets(
 
 dataset_list = get_dogs_datasets(root="dataset")
 
-# %% [markdown]
 # ### 3.3 사전 학습된 ResNet50 모델
 
-# %%
 from torchsummary import summary
 
 # torch.hub.load(): 지정한 GitHub 저장소에서 모델 코드와 가중치를 불러온다.
@@ -207,7 +191,6 @@ model = torch.hub.load(
 )
 print(model)
 
-# %%
 # ImageNet 1,000개 분류용 fc를 개 품종 120개 분류용 계층으로 교체한다.
 model.fc = nn.Sequential(
     nn.Linear(2048, 512),
@@ -217,11 +200,9 @@ model.fc = nn.Sequential(
 
 print(model)
 
-# %%
 # 입력 크기는 배치 차원을 제외한 (채널, 높이, 너비)이다.
 summary(model.to(device), (3, 224, 224))
 
-# %%
 def load_resnet():
     model = torch.hub.load(
         "pytorch/vision:v0.10.0",
@@ -242,14 +223,11 @@ def load_resnet():
 
     return model
 
-# %%
 model = load_resnet()
 summary(model.to(device), (3, 224, 224))
 
-# %% [markdown]
 # ### 3.4 학습, 검증, 테스트
 
-# %%
 def train(model, dataloader, criterion, optimizer, epoch, device):
   # train mode
   model.train()
@@ -285,7 +263,6 @@ def train(model, dataloader, criterion, optimizer, epoch, device):
 
   return running_loss/len(dataloader), acc
 
-# %%
 def validation(model, dataloader, criterion, epoch, device):
   # eval 모드
   model.eval()
@@ -314,7 +291,6 @@ def validation(model, dataloader, criterion, epoch, device):
 
   return running_loss/len(dataloader), acc
 
-# %%
 # Hyperparameters
 # Training
 EPOCH = 30
@@ -404,10 +380,8 @@ for epoch in range(1, EPOCH+1):
     torch.save(model.state_dict(), last_checkpoint)
 
 
-# %% [markdown]
 # #### 추론
 
-# %%
 def inference(model, image, device, root='dataset'):
   # 학습 때와 같은 순서로 품종 목록을 만들어 예측 번호를 품종명으로 변환한다.
   df = pd.read_csv(join(root, 'labels.csv'))
@@ -435,7 +409,6 @@ def inference(model, image, device, root='dataset'):
   print(predicted)
   print(class_names[predicted.item()])
 
-# %%
 is_cuda = torch.cuda.is_available()
 device = torch.device("cuda" if is_cuda else "cpu")
 
@@ -445,16 +418,12 @@ model = load_resnet()
 # map_location은 GPU에서 저장한 가중치도 현재 선택된 장치에서 불러오게 한다.
 model.load_state_dict(torch.load(last_checkpoint, map_location=device))
 
-# %%
 # 추론 모델의 3채널 입력과 맞추기 위해 RGB로 변환한다.
 img = Image.open("mong.jpg").convert("RGB")
 img
 
-# %%
 inference(model, img, device)
-# %%
 img = Image.open("coco.jpg").convert("RGB")
 img
 
-# %%
 inference(model, img, device)

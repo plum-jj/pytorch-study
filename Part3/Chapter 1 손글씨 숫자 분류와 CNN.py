@@ -1,15 +1,11 @@
-# %%
 # Converted from: Chapter 1 손글씨 숫자 분류와 CNN.ipynb
 # Original .ipynb is preserved alongside this file.
 
-# %% [markdown]
 # # 딥러닝의 기본 이미지 분류하기
 # ## Chapter 1 손글씨 숫자 분류와 CNN
 
-# %% [markdown]
 # ### 1.5 학습 준비
 
-# %%
 import random
 
 import torch
@@ -28,7 +24,6 @@ from torchvision import datasets, transforms
 import numpy as np
 import matplotlib.pyplot as plt
 
-# %%
 # torch.cuda.is_available(): 현재 환경에서 CUDA GPU를 사용할 수 있는지 확인한다.
 # NVIDIA GPU와 CUDA를 지원하는 PyTorch가 준비되어 있으면 True를 반환한다.
 is_cuda = torch.cuda.is_available()
@@ -40,7 +35,6 @@ device = torch.device("cuda" if is_cuda else "cpu")
 
 print(is_cuda, device)
 
-# %%
 seed = 1010
 
 # random.seed(): 파이썬 기본 random 모듈의 난수 시드를 고정한다.
@@ -60,10 +54,8 @@ if device.type == "cuda":
 # 시드를 고정해도 일부 GPU 연산은 구현 방식에 따라
 # 실행 결과가 완전히 동일하지 않을 수 있다.
 
-# %% [markdown]
 # ### 1.6 MNIST 데이터셋
 
-# %%
 from torch.utils.data import random_split
 
 
@@ -137,10 +129,8 @@ def get_mnist_dataloaders(batch_size, val=0.2, num_workers=0):
 
     return train_loader, val_loader, test_loader
 
-# %% [markdown]
 # ### 1.7 LeNet
 
-# %%
 # LeNet은 손글씨 숫자처럼 간단한 이미지를 분류하기 위해 만들어진
 # 초기 형태의 합성곱 신경망(CNN) 구조이다.
 #
@@ -208,10 +198,8 @@ class LeNet(nn.Module):
         # 여기서는 Softmax를 적용하지 않는다.
         return x
 
-# %% [markdown]
 # ### 1.8 학습, 검증, 테스트
 
-# %%
 def train(model, dataloader, criterion, optimizer, epoch):
     # model.train(): 모델을 학습 모드로 전환한다.
     # Dropout이나 BatchNorm처럼 학습과 평가 때 동작이 다른 계층에 영향을 준다.
@@ -267,7 +255,6 @@ def train(model, dataloader, criterion, optimizer, epoch):
     # 전체 배치에서 발생한 손실의 평균을 반환한다.
     return running_loss / len(dataloader)
 
-# %%
 def validation(model, dataloader, criterion, epoch):
   # eval 모드
   model.eval()
@@ -296,7 +283,6 @@ def validation(model, dataloader, criterion, epoch):
 
   return running_loss/len(dataloader)
 
-# %%
 def test(model, dataloader):
     # 테스트는 검증과 마찬가지로 가중치를 변경하지 않는다.
     # 검증 데이터는 학습 중 모델 선택에 사용하지만,
@@ -317,7 +303,6 @@ def test(model, dataloader):
     accuracy = 100.0 * correct / data_num
     print(f"Test Accuracy: {correct}/{data_num} ({accuracy:.2f}%)")
 
-# %%
 # 하이퍼파라미터는 학습으로 자동 결정되지 않고 사용자가 미리 정하는 값이다.
 # EPOCH은 전체 학습 데이터를 반복해서 학습할 횟수이다.
 EPOCH = 5
@@ -358,7 +343,6 @@ for epoch in range(EPOCH):
 
 test(model, test_loader)
 
-# %%
 import matplotlib.pyplot as plt
 
 plt.plot(train_losses)
